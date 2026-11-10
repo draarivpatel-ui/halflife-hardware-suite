@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Half Life Hardware Suite | Engineering Workbench</title>
+<meta name="description" content="Five weeks of Hack Club Half Life hardware designs: PCB, CAD, music, displays and breadboard logic, inspectable in the browser.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<header class="site-head">
+  <div class="head-inner">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">HL</span>
+      <div>
+        <h1>HALF LIFE <span class="thin">HARDWARE SUITE</span></h1>
+        <p class="tagline">5 weekly hardware design tracks &nbsp;/&nbsp; 2-layer PCB &nbsp;/&nbsp; parametric CAD &nbsp;/&nbsp; discrete logic</p>
+      </div>
+    </div>
+    <div class="head-meta">
+      <span class="badge">v1.0.0</span>
+      <span class="badge ghost">ZERO DEPENDENCIES</span>
+      <a class="head-link" href="https://github.com/draarivpatel-ui/halflife-hardware-suite" target="_blank" rel="noopener">GitHub &#8599;</a>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Week tabs">
+  <button class="tab active" role="tab" aria-selected="true" data-tab="w1"><span class="tab-num">01</span><span>PCB</span><small>BenchRail-INA</small></button>
+  <button class="tab" role="tab" aria-selected="false" data-tab="w2"><span class="tab-num">02</span><span>CAD</span><small>HelicalDesk</small></button>
+  <button class="tab" role="tab" aria-selected="false" data-tab="w3"><span class="tab-num">03</span><span>MUSIC</span><small>PocketChime-R2R</small></button>
+  <button class="tab" role="tab" aria-selected="false" data-tab="w4"><span class="tab-num">04</span><span>DISPLAY</span><small>GlyphMatrix-128</small></button>
+  <button class="tab" role="tab" aria-selected="false" data-tab="w5"><span class="tab-num">05</span><span>LOGIC</span><small>DiscreteALU-74HC</small></button>
+</nav>
+
+<main class="workbench">
+
+  <!-- ===================== WEEK 1 ===================== -->
+  <section class="panel active" id="w1" role="tabpanel">
+    <div class="panel-head">
+      <div><p class="eyebrow">WEEK 01 / PCB DESIGN</p><h2>BenchRail-INA &mdash; USB-C Dual-Rail Precision Current &amp; Voltage Monitor</h2></div>
+      <div class="chips"><span class="chip">2 LAYER</span><span class="chip">62 x 42 mm</span><span class="chip">KiCad 8</span><span class="chip hot">BOM $6.90</span></div>
+    </div>
+    <p class="lede">Dual INA219AIDCNR monitors on independent 0R1 shunts, an AMS1117-3.3 regulator, a USB4105-GF-A receptacle with 5K1 CC pulldowns, and four M2.5 mounting holes. Toggle copper and silkscreen layers below; the plot is parsed live from the checked-in <code>.kicad_pcb</code> source.</p>
+    <div class="split">
+      <div class="card viewer-card">
+        <div class="card-bar"><strong>LIVE LAYER INSPECTOR</strong><span id="w1Src" class="status">loading board source</span></div>
+        <div class="board-wrap"><svg id="boardSvg" viewBox="0 0 640 460" role="img" aria-label="PCB layer plot"></svg></div>
+        <div class="layer-toggles" id="layerToggles"></div>
+      </div>
+      <div class="card side-card">
+        <div class="card-bar"><strong>INA219 TELEMETRY MODEL</strong><span class="status">0x40 / 0x41</span></div>
+        <div class="control-row"><label for="w1Shunt">Load current <output id="w1ShuntOut">0.420 A</output></label><input id="w1Shunt" type="range" min="0" max="1600" value="420" step="1"></div>
+        <div class="control-row"><label for="w1Bus">Bus voltage <output id="w1BusOut">5.000 V</output></label><input id="w1Bus" type="range" min="0" max="16000" value="5000" step="1"></div>
+        <div class="readout-grid" id="w1Readout"></div>
+        <h3>Net classes</h3>
+        <table class="mini-table"><thead><tr><th>Class</th><th>Clearance</th><th>Track</th><th>Via</th></tr></thead><tbody>
+          <tr><td>Default</td><td>0.20 mm</td><td>0.25 mm</td><td>0.8 / 0.4</td></tr>
+          <tr><td>Power</td><td>0.25 mm</td><td>0.60 mm</td><td>1.0 / 0.5</td></tr>
+          <tr><td>Signal</td><td>0.15 mm</td><td>0.20 mm</td><td>0.6 / 0.3</td></tr>
+        </tbody></table>
+        <h3>Layer stack</h3>
+        <ul class="stack-list" id="w1Stack"></ul>
+      </div>
+    </div>
+    <div class="file-strip" id="w1Files"></div>
+  </section>
+
+  <!-- ===================== WEEK 2 ===================== -->
+  <section class="panel" id="w2" role="tabpanel" hidden>
+    <div class="panel-head">
+      <div><p class="eyebrow">WEEK 02 / PARAMETRIC CAD</p><h2>HelicalDesk &mdash; 3-Stage Snap-Fit Instrument Stand &amp; Rotary Detent Pod</h2></div>
+      <div class="chips"><span class="chip">OpenSCAD</span><span class="chip">ASCII STL</span><span class="chip">MANIFOLD</span><span class="chip">Atlantis</span></div>
+    </div>
+    <p class="lede">Three printable parts generated from a single parameterized source. The turntable parses the actual ASCII STL facets, flat-shades them with a fixed light vector, and reports half-edge pairing and signed volume computed in the browser.</p>
+    <div class="split">
+      <div class="card viewer-card">
+        <div class="card-bar"><strong>STL TURNTABLE</strong><span id="w2Src" class="status">loading geometry</span></div>
+        <canvas id="stlCanvas" width="700" height="480" role="img" aria-label="3D shaded STL viewer"></canvas>
+        <div class="btn-row">
+          <button class="btn" id="w2Part" data-part="0">Part selector</button>
+          <button class="btn" id="w2Mode">Shaded / Wireframe</button>
+          <button class="btn" id="w2Spin">Spin: ON</button>
+          <button class="btn" id="w2Reset">Reset view</button>
+        </div>
+      </div>
+      <div class="card side-card">
+        <div class="card-bar"><strong>MANIFOLD REPORT</strong><span class="status">half-edge + volume</span></div>
+        <div class="part-tabs" id="partTabs"></div>
+        <div class="readout-grid" id="w2Stats"></div>
+        <h3>Connected components</h3>
+        <div class="vol-bars" id="w2Volumes"></div>
+        <h3>Customizer parameters</h3>
+        <div class="param-grid" id="w2Params"></div>
+      </div>
+    </div>
+    <div class="file-strip" id="w2Files"></div>
+  </section>
+
+  <!-- ===================== WEEK 3 ===================== -->
+  <section class="panel" id="w3" role="tabpanel" hidden>
+    <div class="panel-head">
+      <div><p class="eyebrow">WEEK 03 / MUSIC</p><h2>PocketChime-R2R &mdash; 8-Bit R-2R Ladder Pocket Chiptune Synthesizer</h2></div>
+      <div class="chips"><span class="chip">8 BIT DAC</span><span class="chip">4 VOICE DDS</span><span class="chip">ADSR</span><span class="chip hot">BOM $12.18</span></div>
+    </div>
+    <p class="lede">An exact nodal solve of the 10K / 20K ladder gives the 256-code transfer curve. Four phase-accumulator voices and a four-stage ADSR shape the sample stream. <strong>This workbench is visual only.</strong> No audio device is created until you explicitly opt in with the muted toggle below.</p>
+    <div class="split">
+      <div class="card viewer-card">
+        <div class="card-bar"><strong>R-2R DAC STAIRCASE</strong><span class="status">256 codes / nodal solve</span></div>
+        <canvas id="dacCanvas" width="700" height="300" role="img" aria-label="R-2R DAC transfer curve"></canvas>
+        <div class="card-bar sub"><strong>ADSR / DDS OSCILLOSCOPE</strong><span class="status" id="w3ScopeLabel">sweep 0..255</span></div>
+        <canvas id="scopeCanvas" width="700" height="240" role="img" aria-label="ADSR envelope and DDS waveform"></canvas>
+      </div>
+      <div class="card side-card">
+        <div class="card-bar"><strong>SYNTH CONTROLS</strong><span class="status">visual only</span></div>
+        <div class="audio-gate">
+          <label class="switch-row" for="audioToggle">
+            <input type="checkbox" id="audioToggle" aria-describedby="audioNote">
+            <span class="switch" aria-hidden="true"></span>
+            <span id="audioToggleLabel">Audio: MUTED (click to opt in)</span>
+          </label>
+          <p id="audioNote">Default off. Nothing is instantiated or played on page load. Checking this box creates a silent audio context; a separate explicit play control is required before any sound is produced.</p>
+          <button class="btn" id="audioPlay" disabled>Play test tone (disabled while muted)</button>
+          <p class="gate-state" id="audioState">STATE: no AudioContext created</p>
+        </div>
+        <div class="control-row"><label for="w3Attack">Attack <output id="w3AttackOut">200 smp</output></label><input id="w3Attack" type="range" min="1" max="1200" value="200"></div>
+        <div class="control-row"><label for="w3Decay">Decay <output id="w3DecayOut">900 smp</output></label><input id="w3Decay" type="range" min="1" max="2400" value="900"></div>
+        <div class="control-row"><label for="w3Sustain">Sustain <output id="w3SustainOut">0.60</output></label><input id="w3Sustain" type="range" min="0" max="100" value="60"></div>
+        <div class="control-row"><label for="w3Release">Release <output id="w3ReleaseOut">1600 smp</output></label><input id="w3Release" type="range" min="1" max="4000" value="1600"></div>
+        <div class="control-row"><label for="w3Code">DAC code <output id="w3CodeOut">128</output></label><input id="w3Code" type="range" min="0" max="255" value="128"></div>
+        <div class="readout-grid" id="w3Readout"></div>
+        <h3>R-2R ladder</h3>
+        <ul class="stack-list">
+          <li>8 x 10K 1% 0603 horizontal arms</li>
+          <li>7 x 20K 1% 0603 vertical legs + 20K termination</li>
+          <li>MCP6002-I/SN rail-to-rail buffer, SOIC-8</li>
+          <li>12-key chromatic 3x4 tactile matrix</li>
+        </ul>
+      </div>
+    </div>
+    <div class="file-strip" id="w3Files"></div>
+  </section>
+
+  <!-- ===================== WEEK 4 ===================== -->
+  <section class="panel" id="w4" role="tabpanel" hidden>
+    <div class="panel-head">
+      <div><p class="eyebrow">WEEK 04 / DISPLAYS</p><h2>GlyphMatrix-128 &mdash; Dual SSD1306 OLED + 74HC595 8x8 LED Desk Telemetry Badge</h2></div>
+      <div class="chips"><span class="chip">HW I2C</span><span class="chip">PAGE BUFFER</span><span class="chip">5x7 FONT</span><span class="chip hot">BOM $18.37</span></div>
+    </div>
+    <p class="lede">Two 128x64 SSD1306 panels rendered from real 1 KiB page buffers (8 pages x 128 bytes, LSB is the top pixel row). A separate 8x8 framebuffer is scanned one row at a time through a 74HC595 shift register model, with ghost suppression during the latch pulse.</p>
+    <div class="split">
+      <div class="card viewer-card">
+        <div class="card-bar"><strong>SSD1306 PANEL 0 &nbsp;/&nbsp; 0x3C</strong><span class="status">128x64 / 1024 bytes</span></div>
+        <canvas id="oled0" width="512" height="256" role="img" aria-label="SSD1306 panel 0 framebuffer"></canvas>
+        <div class="card-bar sub"><strong>SSD1306 PANEL 1 &nbsp;/&nbsp; 0x3D</strong><span class="status">128x64 / 1024 bytes</span></div>
+        <canvas id="oled1" width="512" height="256" role="img" aria-label="SSD1306 panel 1 framebuffer"></canvas>
+        <div class="card-bar sub"><strong>74HC595 8x8 LED SCAN</strong><span class="status" id="w4RowLabel">row 0</span></div>
+        <canvas id="ledCanvas" width="320" height="320" role="img" aria-label="8x8 LED matrix simulator"></canvas>
+      </div>
+      <div class="card side-card">
+        <div class="card-bar"><strong>DISPLAY CONTROLS</strong><span class="status">live framebuffer</span></div>
+        <div class="control-row"><label for="w4Text">Panel 0 text <output id="w4TextLen">20 chars</output></label><input id="w4Text" type="text" value="HALF LIFE 2026" maxlength="20"></div>
+        <div class="control-row"><label for="w4Bars">Bar offset <output id="w4BarsOut">0</output></label><input id="w4Bars" type="range" min="0" max="63" value="0"></div>
+        <div class="control-row"><label for="w4Glyph">LED glyph ASCII <output id="w4GlyphOut">65</output></label><input id="w4Glyph" type="range" min="32" max="126" value="65"></div>
+        <div class="control-row"><label for="w4Scan">Scan row <output id="w4ScanOut">0</output></label><input id="w4Scan" type="range" min="0" max="7" value="0"></div>
+        <div class="btn-row"><button class="btn" id="w4Animate">Animation: ON</button><button class="btn" id="w4Invert">Invert panels</button></div>
+        <div class="readout-grid" id="w4Readout"></div>
+        <h3>SSD1306 init sequence</h3>
+        <ol class="stack-list">
+          <li>0xAE display off, 0xD5/0x80 clock divide</li>
+          <li>0xA8/0x3F multiplex, 0x8D/0x14 charge pump</li>
+          <li>0x20/0x00 horizontal addressing mode</li>
+          <li>0xB0+page, 0x00/0x10 column, 0x40 data stream</li>
+          <li>0xAF display on, I2C clock 400 kHz</li>
+        </ol>
+      </div>
+    </div>
+    <div class="file-strip" id="w4Files"></div>
+  </section>
+
+  <!-- ===================== WEEK 5 ===================== -->
+  <section class="panel" id="w5" role="tabpanel" hidden>
+    <div class="panel-head">
+      <div><p class="eyebrow">WEEK 05 / BREADBOARD LOGIC</p><h2>DiscreteALU-74HC &mdash; 4-Bit 74HCxx CMOS ALU &amp; Step Counter</h2></div>
+      <div class="chips"><span class="chip">DIP-14/16</span><span class="chip">74HC283</span><span class="chip">74HC153</span><span class="chip hot">BOM $11.92</span></div>
+    </div>
+    <p class="lede">Click any operand bit to toggle it, choose an opcode, and watch the gate-level datapath resolve. The <strong>Verify 512</strong> control exhaustively checks all 16 x 16 operand pairs across the ADD and SUB opcodes against an independent reference, then all five opcodes across the full 1280-vector table.</p>
+    <div class="split">
+      <div class="card viewer-card">
+        <div class="card-bar"><strong>DATAPATH PROVER</strong><span class="status">gate level</span></div>
+        <div class="alu-grid">
+          <div class="operand-block"><h3>A[3:0]</h3><div class="bits" id="bitsA"></div><div class="binread" id="binA">0000</div></div>
+          <div class="operand-block"><h3>B[3:0]</h3><div class="bits" id="bitsB"></div><div class="binread" id="binB">0000</div></div>
+        </div>
+        <div class="op-row" id="opRow"></div>
+        <div class="signal-flow" id="signalFlow"></div>
+        <div class="operand-block result-block"><h3>Y[3:0]</h3><div class="bits" id="bitsY"></div><div class="binread" id="binY">0000</div></div>
+        <div class="flag-row" id="flagRow"></div>
+        <div class="btn-row"><button class="btn primary" id="w5Verify">Verify 512 + 1280 vectors</button><button class="btn" id="w5Random">Random operands</button><button class="btn" id="w5Step">Clock 74HC161</button></div>
+        <p class="verify-out" id="w5VerifyOut">Run the exhaustive check to populate results.</p>
+      </div>
+      <div class="card side-card">
+        <div class="card-bar"><strong>IC PIN MAP</strong><span class="status">from netlist.json</span></div>
+        <div class="ic-select" id="icSelect"></div>
+        <table class="mini-table pin-table"><thead><tr><th>Pin</th><th>Signal</th><th>Pin</th><th>Signal</th></tr></thead><tbody id="pinTable"></tbody></table>
+        <h3>74HC161 step counter</h3>
+        <div class="bits" id="bitsQ"></div>
+        <p class="counter-read" id="counterRead">Q = 0000 (0)</p>
+        <h3>Flag equations</h3>
+        <ul class="stack-list">
+          <li>CARRY = COUT of 74HC283, NOT borrow on SUB</li>
+          <li>ZERO = NOR(Y0..Y3) with 74HC02 + 74HC14</li>
+          <li>OVERFLOW = sign compare of A3, B3, Y3</li>
+          <li>SUB = S1 AND NOT S0, drives XOR B inversion and CIN</li>
+        </ul>
+      </div>
+    </div>
+    <div class="file-strip" id="w5Files"></div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <div class="foot-inner">
+    <div><strong>halflife-hardware-suite</strong><span>5 weekly hardware design tracks for <a href="https://halflife.hackclub.com" target="_blank" rel="noopener">Hack Club Half Life</a> and <a href="https://atlantis.hackclub.com" target="_blank" rel="noopener">Hack Club Atlantis</a>.</span></div>
+    <div class="foot-links"><a href="README.md">README</a><a href="JOURNAL.md">JOURNAL</a><a href="LICENSE">MIT LICENSE</a><span id="footTot"></span></div>
+  </div>
+</footer>
+
+<script src="suite_font.js"></script>
+<script src="week5-logic/alu.js"></script>
+<script src="suite.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+Reference,Value,Package,Quantity,Distributor,PartNumber,UnitPriceUSD,ExtendedUSD,Notes
+"U1,U2","INA219AIDCNR","SOT-23-8",2,LCSC,C924766,1.38,2.76,"TI INA219, I2C current and voltage monitor"
+"U3","AMS1117-3.3","SOT-223-3",1,LCSC,C6186,0.16,0.16,"3.3 V LDO, 1 A"
+"J1","USB4105-GF-A","USB-C SMD",1,DigiKey,2073-USB4105-GF-A-ND,0.62,0.62,"GCT USB4105 16 pin USB 2.0 receptacle"
+"R1,R2","0R1 1% 1206","1206",2,LCSC,C178685,0.09,0.18,"0.1 ohm 1% 0.25 W sense resistor"
+"R3","10K 1% 0603","0603",1,LCSC,C25804,0.01,0.01,"INA219 address select pulldown"
+"R4,R5","5K1 1% 0603","0603",2,DigiKey,311-5.10KHRCT-ND,0.02,0.04,"USB-C CC1 and CC2 Rd pulldowns"
+"R6,R7","4K7 1% 0603","0603",2,LCSC,C23162,0.01,0.02,"I2C bus pullups to 3V3"
+"C1,C4,C5","100n 0603 X7R","0603",3,LCSC,C14663,0.01,0.03,"Decoupling"
+"C2,C3,C6","10u 0603 X5R","0603",3,LCSC,C19702,0.03,0.09,"Bulk decoupling"
+"J2","1x04 2.54mm header","THT",1,LCSC,C124378,0.11,0.11,"I2C and rail sense breakout"
+"H1-H4","M2.5 nylon screw set","Hardware",4,DigiKey,36-9552-ND,0.12,0.48,"M2.5 x 6 mm nylon screws and nuts"
+"PCB","BenchRail-INA 2L 62x42mm","FR4",1,JLCPCB,PCB-2L-62x42,2.40,2.40,"2 layer 1.6 mm ENIG, 5 pcs split cost"

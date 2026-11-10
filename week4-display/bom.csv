@@ -1,0 +1,11 @@
+Reference,Value,Package,Quantity,Distributor,PartNumber,UnitPriceUSD,ExtendedUSD,Notes
+"U1","RP2040-Zero","Module",1,DigiKey,1528-2560-ND,4.95,4.95,"Host MCU, hardware I2C and SPI"
+"U2","74HC595D","SOIC-16",1,LCSC,C59493,0.19,0.19,"8 bit shift register with output latch"
+"J1,J2","SSD1306 128x64 OLED","Module 0.96in",2,DigiKey,1528-1738-ND,3.95,7.90,"Dual I2C OLED, address 0x3C and 0x3D"
+"D1","8x8 LED matrix 20mm","THT 16pin",1,LCSC,C9018,1.10,1.10,"Row anode / column cathode"
+"R1-R8","330R 0603","0603",8,LCSC,C23136,0.01,0.08,"Row current limiting resistors"
+"C1-C3","100n 0603 X7R","0603",3,LCSC,C14663,0.01,0.03,"Decoupling"
+"J3,J4","1x04 2.54mm header","THT",2,LCSC,C124378,0.11,0.22,"OLED module sockets"
+"R9,R10","4K7 0603","0603",2,LCSC,C23162,0.01,0.02,"I2C pullups"
+"H1-H4","M2.5 nylon screw set","Hardware",4,DigiKey,36-9552-ND,0.12,0.48,"Standoffs"
+"PCB","GlyphMatrix 2L 88x54mm","FR4",1,JLCPCB,PCB-2L-88x54,3.40,3.40,"2 layer 1.6 mm ENIG, 5 pcs split cost"

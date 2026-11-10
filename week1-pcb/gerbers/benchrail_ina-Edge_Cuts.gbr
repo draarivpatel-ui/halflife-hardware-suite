@@ -1,0 +1,27 @@
+G04 BenchRail / PocketChime / GlyphMatrix RS-274X plot*
+G04 Layer: Edge.Cuts*
+G04 halflife-hardware-suite, KiCad 8 compatible output*
+%FSLAX46Y46*%
+%MOMM*%
+%TF.GenerationSoftware,KiCad,8.0,halflife-hardware-suite*%
+%TF.FileFunction,Copper,L1,Top*%
+%TD*%
+%ADD10C,0.150000*%
+%ADD11C,0.250000*%
+%ADD12R,1.600000X0.900000*%
+%ADD13C,2.700000*%
+%ADD14C,0.800000*%
+%LPD*%
+D11*
+X0Y42000000D02*
+X62000000Y42000000D01*
+D11*
+X62000000Y42000000D02*
+X62000000Y0D01*
+D11*
+X62000000Y0D02*
+X0Y0D01*
+D11*
+X0Y0D02*
+X0Y42000000D01*
+M02*

@@ -1,0 +1,51 @@
+{
+  "params": {
+    "chassis_w": 92,
+    "chassis_d": 64,
+    "chassis_h": 8,
+    "rim": 3.2,
+    "boss_r": 6.4,
+    "boss_bore": 2.6,
+    "detents": 12,
+    "cradle_w": 62,
+    "cradle_d": 44,
+    "cradle_h": 5,
+    "dial_r": 21,
+    "dial_h": 6,
+    "dial_bore": 2.6,
+    "dial_seg": 48,
+    "snap_len": 3,
+    "snap_w": 1.6,
+    "snap_h": 1.1
+  },
+  "parts": {
+    "base_chassis": {
+      "vertices": 256,
+      "triangles": 480,
+      "directedEdges": 1440,
+      "unmatched": 0,
+      "volume": 49761.887492871116
+    },
+    "tilt_cradle": {
+      "vertices": 248,
+      "triangles": 468,
+      "directedEdges": 1404,
+      "unmatched": 0,
+      "volume": 17565.551526500072
+    },
+    "detent_dial": {
+      "vertices": 288,
+      "triangles": 528,
+      "directedEdges": 1584,
+      "unmatched": 0,
+      "volume": 8316.711894187465
+    },
+    "assembled_preview": {
+      "vertices": 792,
+      "triangles": 1476,
+      "directedEdges": 4428,
+      "unmatched": 0,
+      "volume": 75644.15091355816
+    }
+  }
+}
