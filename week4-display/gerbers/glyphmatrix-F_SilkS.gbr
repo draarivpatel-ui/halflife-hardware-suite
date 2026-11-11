@@ -4,7 +4,8 @@ G04 halflife-hardware-suite, KiCad 8 compatible output*
 %FSLAX46Y46*%
 %MOMM*%
 %TF.GenerationSoftware,KiCad,8.0,halflife-hardware-suite*%
-%TF.FileFunction,Copper,L2,Top*%
+%TF.FileFunction,Legend,Top*%
+%TF.FilePolarity,Positive*%
 %TD*%
 %ADD10C,0.150000*%
 %ADD11C,0.250000*%

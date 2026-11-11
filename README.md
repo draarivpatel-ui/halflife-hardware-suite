@@ -114,18 +114,18 @@ README.md  JOURNAL.md  LICENSE
 tools/
   generate_suite_artifacts.js   deterministic artifact generator
   font_data.txt                 256 glyph x 5 byte source table
-week1-pcb/    kicad_sch  kicad_pcb  kicad_pro  gerbers/  bom.csv
+week1-pcb/    kicad_sch  kicad_pcb  kicad_pro  gerbers/  benchrail_ina-gerbers.zip  bom.csv
 week2-cad/    helical_desk.scad  3x stl  assembled_preview.obj  geometry_stats.json
-week3-music/  kicad_pcb  kicad_pro  gerbers/  bom.csv  firmware/pocketchime.ino
-week4-display/ kicad_pcb  kicad_pro  gerbers/  bom.csv  firmware/  font5x7.js
+week3-music/  kicad_pcb  kicad_pro  gerbers/  pocketchime-gerbers.zip  bom.csv  firmware/pocketchime.ino
+week4-display/ kicad_pcb  kicad_pro  gerbers/  glyphmatrix-gerbers.zip  bom.csv  firmware/  font5x7.js
 week5-logic/  netlist.json  BREADBOARD_GUIDE.md  alu.js  bom.csv
 ```
 
 ## Fabrication notes
 
 * All PCBs are 2 layer, 1.6 mm FR4, 0.035 mm copper, ENIG finish, green mask, with a 1.51 mm FR4 dielectric core.
-* Gerbers use 4.6 format, millimetres, and 4.4 metric drill coordinates with leading zeros.
-* Send the `.gbr` plots plus the `.drl` from one week's `gerbers/` directory as a single zip to the fab. Keep the `Edge.Cuts` plot on the board outline layer.
+* Gerbers use 4.6 format, millimetres, Gerber X2 `%TF.FileFunction` and `%TF.FilePolarity` attributes, and 4.4 metric drill coordinates.
+* Upload `<board>-gerbers.zip` (containing all nine `.gbr` plots plus `<board>.drl`, with `Edge.Cuts` mapped to `Profile,NP`) directly to PCBWay, JLCPCB, or OSH Park.
 * BOM prices are single-unit catalog prices captured for this build. They exclude shipping and customs, which Half Life does not cover.
 * Week 2 prints without supports. Allow a 0.2 mm bore clearance on the M2.5 hinge.
 * Week 5 uses a current-limited 5 V bench supply and expects under 20 mA idle draw. Tie every unused CMOS input to a defined rail.

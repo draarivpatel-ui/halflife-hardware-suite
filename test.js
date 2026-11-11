@@ -132,11 +132,21 @@ const GERBER_SETS = [
   ['week3-music/gerbers', 'pocketchime'],
   ['week4-display/gerbers', 'glyphmatrix']
 ];
-const GBR_SUFFIXES = ['F_Cu', 'B_Cu', 'F_SilkS', 'B_SilkS', 'F_Mask', 'B_Mask', 'Edge_Cuts', 'F_Paste', 'B_Paste'];
+const GBR_SPECS = [
+  ['F_Cu', 'Copper,L1,Top', 'Positive'],
+  ['B_Cu', 'Copper,L2,Bot', 'Positive'],
+  ['F_SilkS', 'Legend,Top', 'Positive'],
+  ['B_SilkS', 'Legend,Bot', 'Positive'],
+  ['F_Mask', 'Soldermask,Top', 'Negative'],
+  ['B_Mask', 'Soldermask,Bot', 'Negative'],
+  ['Edge_Cuts', 'Profile,NP', 'Positive'],
+  ['F_Paste', 'Paste,Top', 'Positive'],
+  ['B_Paste', 'Paste,Bot', 'Positive']
+];
 
 for (const [dir, tag] of GERBER_SETS) {
-  test(`Gerber set ${tag}: 9 RS-274X plots with headers and M02*`, () => {
-    for (const sfx of GBR_SUFFIXES) {
+  test(`Gerber set ${tag}: 9 RS-274X plots with exact X2 FileFunction, polarity and M02*`, () => {
+    for (const [sfx, fileFn, filePol] of GBR_SPECS) {
       const rel = `${dir}/${tag}-${sfx}.gbr`;
       const b = bytes(rel);
       assert.ok(b.length > 500, `${rel} too small`);
@@ -144,13 +154,17 @@ for (const [dir, tag] of GERBER_SETS) {
       assert.match(t, /^G04 /);
       assert.match(t, /%FSLAX46Y46\*%/);
       assert.match(t, /%MOMM\*%/);
+      assert.ok(t.includes(`%TF.FileFunction,${fileFn}*%`), `${rel} missing FileFunction ${fileFn}`);
+      assert.ok(t.includes(`%TF.FilePolarity,${filePol}*%`), `${rel} missing FilePolarity ${filePol}`);
+      assert.ok(t.includes('%LPD*%'), `${rel} must draw dark features on the image plane`);
+      assert.equal(t.includes('%LPC*%'), false, `${rel} must not start with clear polarity`);
       assert.match(t, /%ADD1[0-4]/);
       assert.match(t, /D0[123]\*/);
       assert.ok(t.trimEnd().endsWith('M02*'), `${rel} must end with M02*`);
       assert.equal(t.includes('M00'), false);
     }
   });
-  test(`Excellon drill ${tag}: M48 header, tool table, M30 terminator`, () => {
+  test(`Excellon drill and ZIP archive ${tag}: M48 header, tool table, M30, 10-entry ZIP`, () => {
     const t = read(`${dir}/${tag}.drl`);
     assert.match(t, /^M48/m);
     assert.match(t, /FMAT,2/);
@@ -162,6 +176,16 @@ for (const [dir, tag] of GERBER_SETS) {
     assert.match(t, /G05/);
     assert.match(t, /^X[\d.]+Y[\d.]+$/m);
     assert.ok(t.trimEnd().endsWith('M30'));
+
+    const zipRel = `${dir.replace('/gerbers', '')}/${tag}-gerbers.zip`;
+    const zb = bytes(zipRel);
+    assert.equal(zb.readUInt32LE(0), 0x04034b50, 'ZIP local header signature');
+    const eocdOffset = zb.length - 22;
+    assert.equal(zb.readUInt32LE(eocdOffset), 0x06054b50, 'ZIP EOCD signature');
+    assert.equal(zb.readUInt16LE(eocdOffset + 10), 10, '9 Gerbers + 1 drill in archive');
+    const asLatin1 = zb.toString('latin1');
+    for (const [sfx] of GBR_SPECS) assert.ok(asLatin1.includes(`${tag}-${sfx}.gbr`));
+    assert.ok(asLatin1.includes(`${tag}.drl`));
   });
 }
 

@@ -6,6 +6,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT = {
@@ -20,6 +21,83 @@ function write(rel, text) {
   const p = path.join(ROOT, rel);
   fs.mkdirSync(path.dirname(p), { recursive: true });
   fs.writeFileSync(p, text, 'utf8');
+  return p;
+}
+
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[i] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(buf) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+function writeZip(rel, entries) {
+  const locals = [], centrals = [];
+  let offset = 0;
+  // Fixed DOS timestamp (2026-11-09 00:00:00) keeps archive output deterministic.
+  const dosTime = 0x0000, dosDate = ((2026 - 1980) << 9) | (11 << 5) | 9;
+  for (const [name, content] of entries) {
+    const nameBuf = Buffer.from(name, 'utf8');
+    const raw = Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8');
+    const comp = zlib.deflateRawSync(raw, { level: 9 });
+    const crc = crc32(raw);
+    const lh = Buffer.alloc(30);
+    lh.writeUInt32LE(0x04034b50, 0);
+    lh.writeUInt16LE(20, 4);
+    lh.writeUInt16LE(0, 6);
+    lh.writeUInt16LE(8, 8);
+    lh.writeUInt16LE(dosTime, 10);
+    lh.writeUInt16LE(dosDate, 12);
+    lh.writeUInt32LE(crc, 14);
+    lh.writeUInt32LE(comp.length, 18);
+    lh.writeUInt32LE(raw.length, 22);
+    lh.writeUInt16LE(nameBuf.length, 26);
+    lh.writeUInt16LE(0, 28);
+    locals.push(lh, nameBuf, comp);
+
+    const ch = Buffer.alloc(46);
+    ch.writeUInt32LE(0x02014b50, 0);
+    ch.writeUInt16LE(20, 4);
+    ch.writeUInt16LE(20, 6);
+    ch.writeUInt16LE(0, 8);
+    ch.writeUInt16LE(8, 10);
+    ch.writeUInt16LE(dosTime, 12);
+    ch.writeUInt16LE(dosDate, 14);
+    ch.writeUInt32LE(crc, 16);
+    ch.writeUInt32LE(comp.length, 20);
+    ch.writeUInt32LE(raw.length, 24);
+    ch.writeUInt16LE(nameBuf.length, 28);
+    ch.writeUInt16LE(0, 30);
+    ch.writeUInt16LE(0, 32);
+    ch.writeUInt16LE(0, 34);
+    ch.writeUInt16LE(0, 36);
+    ch.writeUInt32LE(0, 38);
+    ch.writeUInt32LE(offset, 42);
+    centrals.push(ch, nameBuf);
+    offset += lh.length + nameBuf.length + comp.length;
+  }
+  const cdSize = centrals.reduce((s, b) => s + b.length, 0);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(0, 4);
+  eocd.writeUInt16LE(0, 6);
+  eocd.writeUInt16LE(entries.length, 8);
+  eocd.writeUInt16LE(entries.length, 10);
+  eocd.writeUInt32LE(cdSize, 12);
+  eocd.writeUInt32LE(offset, 16);
+  eocd.writeUInt16LE(0, 20);
+  const p = path.join(ROOT, rel);
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, Buffer.concat([...locals, ...centrals, eocd]));
   return p;
 }
 
@@ -760,7 +838,22 @@ function week4() {
 // ---------------------------------------------------------------------------
 // Gerber RS-274X and Excellon drill emitters.
 // ---------------------------------------------------------------------------
-function gerber(layerName, w, h, items, polarity = '%LPD*%') {
+const GERBER_LAYER_META = {
+  'F.Cu': ['Copper,L1,Top', 'Positive'],
+  'B.Cu': ['Copper,L2,Bot', 'Positive'],
+  'F.SilkS': ['Legend,Top', 'Positive'],
+  'B.SilkS': ['Legend,Bot', 'Positive'],
+  'F.Mask': ['Soldermask,Top', 'Negative'],
+  'B.Mask': ['Soldermask,Bot', 'Negative'],
+  'Edge.Cuts': ['Profile,NP', 'Positive'],
+  'F.Paste': ['Paste,Top', 'Positive'],
+  'B.Paste': ['Paste,Bot', 'Positive']
+};
+
+function gerber(layerName, w, h, items) {
+  const meta = GERBER_LAYER_META[layerName];
+  if (!meta) throw new Error(`Unknown Gerber layer: ${layerName}`);
+  const [fileFn, filePolarity] = meta;
   const L = [];
   L.push('G04 BenchRail / PocketChime / GlyphMatrix RS-274X plot*');
   L.push(`G04 Layer: ${layerName}*`);
@@ -768,14 +861,15 @@ function gerber(layerName, w, h, items, polarity = '%LPD*%') {
   L.push('%FSLAX46Y46*%');
   L.push('%MOMM*%');
   L.push('%TF.GenerationSoftware,KiCad,8.0,halflife-hardware-suite*%');
-  L.push(`%TF.FileFunction,Copper,L${layerName.includes('Cu') ? '1' : '2'},${layerName.includes('B.') ? 'Bot' : 'Top'}*%`);
+  L.push(`%TF.FileFunction,${fileFn}*%`);
+  L.push(`%TF.FilePolarity,${filePolarity}*%`);
   L.push('%TD*%');
   L.push('%ADD10C,0.150000*%');
   L.push('%ADD11C,0.250000*%');
   L.push('%ADD12R,1.600000X0.900000*%');
   L.push('%ADD13C,2.700000*%');
   L.push('%ADD14C,0.800000*%');
-  L.push(polarity);
+  L.push('%LPD*%');
   const X = n => Math.round(n * 1e6);
   for (const it of items) {
     if (it.t === 'flash') {
@@ -814,11 +908,11 @@ function excellon(w, h, holes) {
 
 function gerberSet(dir, w, h, pads, drills, tag) {
   const layers = [
-    ['F_Cu.gbr', 'F.Cu', '%LPD*%'], ['B_Cu.gbr', 'B.Cu', '%LPD*%'],
-    ['F_SilkS.gbr', 'F.SilkS', '%LPD*%'], ['B_SilkS.gbr', 'B.SilkS', '%LPD*%'],
-    ['F_Mask.gbr', 'F.Mask', '%LPC*%'], ['B_Mask.gbr', 'B.Mask', '%LPC*%'],
-    ['Edge_Cuts.gbr', 'Edge.Cuts', '%LPD*%'], ['F_Paste.gbr', 'F.Paste', '%LPD*%'],
-    ['B_Paste.gbr', 'B.Paste', '%LPD*%']
+    ['F_Cu.gbr', 'F.Cu'], ['B_Cu.gbr', 'B.Cu'],
+    ['F_SilkS.gbr', 'F.SilkS'], ['B_SilkS.gbr', 'B.SilkS'],
+    ['F_Mask.gbr', 'F.Mask'], ['B_Mask.gbr', 'B.Mask'],
+    ['Edge_Cuts.gbr', 'Edge.Cuts'], ['F_Paste.gbr', 'F.Paste'],
+    ['B_Paste.gbr', 'B.Paste']
   ];
   const edge = [
     { t: 'line', x0: 0, y0: 0, x1: w, y1: 0 },
@@ -826,7 +920,8 @@ function gerberSet(dir, w, h, pads, drills, tag) {
     { t: 'line', x0: w, y0: h, x1: 0, y1: h },
     { t: 'line', x0: 0, y0: h, x1: 0, y1: 0 }
   ];
-  for (const [fn, layer, pol] of layers) {
+  const archiveEntries = [];
+  for (const [fn, layer] of layers) {
     let items;
     if (layer === 'Edge.Cuts') items = edge;
     else if (layer.includes('SilkS')) items = [
@@ -840,9 +935,16 @@ function gerberSet(dir, w, h, pads, drills, tag) {
       ...Array.from({ length: 12 }, (_, i) => ({ t: 'text', x: 9 + (i % 6) * ((w - 18) / 6), y: 11 + Math.floor(i / 6) * ((h - 22) / 2), len: 2.4 }))
     ];
     else items = pads.map(p => ({ t: 'flash', x: p.x, y: p.y, ap: p.ap || 12 }));
-    write(`${dir}/gerbers/${tag}-${fn}`, gerber(layer, w, h, items, pol));
+    const gbrName = `${tag}-${fn}`;
+    const gbrText = gerber(layer, w, h, items);
+    write(`${dir}/gerbers/${gbrName}`, gbrText);
+    archiveEntries.push([gbrName, gbrText]);
   }
-  write(`${dir}/gerbers/${tag}.drl`, excellon(w, h, drills));
+  const drlName = `${tag}.drl`;
+  const drlText = excellon(w, h, drills);
+  write(`${dir}/gerbers/${drlName}`, drlText);
+  archiveEntries.push([drlName, drlText]);
+  writeZip(`${dir}/${tag}-gerbers.zip`, archiveEntries);
 }
 
 // ---------------------------------------------------------------------------
