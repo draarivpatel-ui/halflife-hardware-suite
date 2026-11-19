@@ -12,7 +12,6 @@
   const $ = id => document.getElementById(id);
   const fmt = (n, d = 2) => Number(n).toFixed(d);
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const svgNS = 'http://www.w3.org/2000/svg';
 
   // -------------------------------------------------------------------------
   // Tab switching, with lazy loading of each week's data.
@@ -213,7 +212,6 @@
     const cal = M.calibration(M.shunt, M.currentLSB);
     const raw = M.currentRegister(amps, M.shunt, M.currentLSB);
     const busRaw = M.busRegister(bus);
-    const shuntV = M.decodeShunt(raw * M.shunt / M.currentLSB);
     const values = [
       ['Shunt drop', fmt(amps * M.shunt * 1000, 3) + ' mV'],
       ['Power', fmt(M.power(amps, bus), 3) + ' W'],
