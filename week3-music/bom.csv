@@ -1,8 +1,8 @@
 Reference,Value,Package,Quantity,Distributor,PartNumber,UnitPriceUSD,ExtendedUSD,Notes
-"U1","RP2040-Zero","Module",1,DigiKey,1528-2560-ND,4.95,4.95,"RP2040 module, 20 castellated pads"
+"U1","RP2040-Zero","Module",1,DigiKey,1528-2560-ND,4.95,4.95,"RP2040 module, 23 castellated pads"
 "U2","MCP6002-I/SN","SOIC-8",1,LCSC,C134062,0.42,0.42,"Dual rail-to-rail op amp buffer"
-"R1-R8","10K 1% 0603","0603",8,LCSC,C25804,0.01,0.08,"R-2R ladder R arms"
-"R9-R16","20K 1% 0603","0603",8,DigiKey,311-20.0KHRCT-ND,0.02,0.16,"R-2R ladder 2R legs and termination"
+"R1-R7","10K 1% 0603","0603",7,LCSC,C25804,0.01,0.07,"R-2R ladder series R arms"
+"R8-R16","20K 1% 0603","0603",9,DigiKey,311-20.0KHRCT-ND,0.02,0.18,"R-2R ladder 2R legs and termination"
 "SW1-SW12","B3U-1000P tactile","SMD",12,LCSC,C393939,0.16,1.92,"12 key chromatic matrix, 3x4"
 "J1","SJ1-3523N TRS jack","THT",1,DigiKey,CP1-3523N-ND,0.89,0.89,"3.5 mm stereo TRS output"
 "C1-C4","100n 0603 X7R","0603",4,LCSC,C14663,0.01,0.04,"Decoupling"

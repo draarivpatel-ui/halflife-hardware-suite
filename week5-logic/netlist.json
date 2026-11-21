@@ -44,6 +44,14 @@
         16
       ]
     },
+    "U9": {
+      "part": "74HC153",
+      "package": "DIP-16",
+      "power": [
+        8,
+        16
+      ]
+    },
     "U6": {
       "part": "74HC161",
       "package": "DIP-16",
@@ -143,21 +151,37 @@
     "U8.13": "4Y",
     "U8.14": "VCC",
     "U5.1": "1G",
+    "U9.1": "1G",
     "U5.2": "S1",
+    "U9.2": "S1",
     "U5.3": "1C3",
+    "U9.3": "1C3",
     "U5.4": "1C2",
+    "U9.4": "1C2",
     "U5.5": "1C1",
+    "U9.5": "1C1",
     "U5.6": "1C0",
+    "U9.6": "1C0",
     "U5.7": "1Y",
+    "U9.7": "1Y",
     "U5.8": "GND",
+    "U9.8": "GND",
     "U5.9": "2Y",
+    "U9.9": "2Y",
     "U5.10": "2C0",
+    "U9.10": "2C0",
     "U5.11": "2C1",
+    "U9.11": "2C1",
     "U5.12": "2C2",
+    "U9.12": "2C2",
     "U5.13": "2C3",
+    "U9.13": "2C3",
     "U5.14": "S0",
+    "U9.14": "S0",
     "U5.15": "2G",
+    "U9.15": "2G",
     "U5.16": "VCC",
+    "U9.16": "VCC",
     "U6.1": "MR",
     "U6.2": "CP",
     "U6.3": "D0",
@@ -198,6 +222,7 @@
         "U3.14",
         "U4.14",
         "U5.16",
+        "U9.16",
         "U6.16",
         "U7.14",
         "U8.14"
@@ -212,6 +237,7 @@
         "U3.7",
         "U4.7",
         "U5.8",
+        "U9.8",
         "U6.8",
         "U7.7",
         "U8.7"
@@ -222,14 +248,18 @@
       "name": "A0",
       "nodes": [
         "U1.5",
+        "U3.1",
+        "U4.1",
         "SW_A0"
       ],
-      "note": "A bit 0 from DIP switch with 10K pulldown"
+      "note": "A bit 0 to adder, AND gate and OR gate"
     },
     {
       "name": "A1",
       "nodes": [
         "U1.3",
+        "U3.4",
+        "U4.4",
         "SW_A1"
       ]
     },
@@ -237,6 +267,8 @@
       "name": "A2",
       "nodes": [
         "U1.14",
+        "U3.9",
+        "U4.9",
         "SW_A2"
       ]
     },
@@ -244,6 +276,8 @@
       "name": "A3",
       "nodes": [
         "U1.12",
+        "U3.12",
+        "U4.12",
         "SW_A3"
       ]
     },
@@ -251,14 +285,18 @@
       "name": "B0",
       "nodes": [
         "U2.1",
+        "U3.2",
+        "U4.2",
         "SW_B0"
       ],
-      "note": "B bit into XOR inverter stage"
+      "note": "B bit to XOR stage, AND gate and OR gate"
     },
     {
       "name": "B1",
       "nodes": [
         "U2.4",
+        "U3.5",
+        "U4.5",
         "SW_B1"
       ]
     },
@@ -266,6 +304,8 @@
       "name": "B2",
       "nodes": [
         "U2.9",
+        "U3.10",
+        "U4.10",
         "SW_B2"
       ]
     },
@@ -273,20 +313,22 @@
       "name": "B3",
       "nodes": [
         "U2.12",
+        "U3.13",
+        "U4.13",
         "SW_B3"
       ]
     },
     {
       "name": "SUB",
       "nodes": [
+        "U8.1",
         "U2.2",
         "U2.5",
         "U2.10",
         "U2.13",
-        "U1.7",
-        "U3.11"
+        "U1.7"
       ],
-      "note": "SUB drives all four XOR inputs and adder CIN"
+      "note": "SUB = S0 AND NOT S1 decoded by U8 gate 1, drives XOR stage and CIN"
     },
     {
       "name": "BX0",
@@ -322,15 +364,15 @@
       "nodes": [
         "U1.4",
         "U5.6",
-        "U5.10"
+        "U5.5"
       ],
-      "note": "Adder S1 is result bit 0, mux C0 on both halves"
+      "note": "Sum bit 0 into mux C0 (ADD) and C1 (SUB)"
     },
     {
       "name": "SUM1",
       "nodes": [
         "U1.1",
-        "U5.5",
+        "U5.10",
         "U5.11"
       ]
     },
@@ -338,16 +380,16 @@
       "name": "SUM2",
       "nodes": [
         "U1.13",
-        "U5.4",
-        "U5.12"
+        "U9.6",
+        "U9.5"
       ]
     },
     {
       "name": "SUM3",
       "nodes": [
         "U1.10",
-        "U5.3",
-        "U5.13"
+        "U9.10",
+        "U9.11"
       ]
     },
     {
@@ -362,52 +404,132 @@
       "name": "AND0",
       "nodes": [
         "U3.3",
-        "U5.6"
+        "U5.4"
       ],
-      "note": "Expansion header, see BREADBOARD_GUIDE.md"
+      "note": "AND bit 0 into mux C2"
+    },
+    {
+      "name": "AND1",
+      "nodes": [
+        "U3.6",
+        "U5.12"
+      ]
+    },
+    {
+      "name": "AND2",
+      "nodes": [
+        "U3.8",
+        "U9.4"
+      ]
+    },
+    {
+      "name": "AND3",
+      "nodes": [
+        "U3.11",
+        "U9.12"
+      ]
     },
     {
       "name": "OR0",
       "nodes": [
         "U4.3",
-        "U5.13"
+        "U5.3"
       ],
-      "note": "OR result bit 0 into mux C3"
+      "note": "OR bit 0 into mux C3"
+    },
+    {
+      "name": "OR1",
+      "nodes": [
+        "U4.6",
+        "U5.13"
+      ]
+    },
+    {
+      "name": "OR2",
+      "nodes": [
+        "U4.8",
+        "U9.3"
+      ]
+    },
+    {
+      "name": "OR3",
+      "nodes": [
+        "U4.11",
+        "U9.13"
+      ]
+    },
+    {
+      "name": "Y0",
+      "nodes": [
+        "U5.7",
+        "U8.5",
+        "LED_Y0"
+      ],
+      "note": "Result bus bit 0"
+    },
+    {
+      "name": "Y1",
+      "nodes": [
+        "U5.9",
+        "U8.6",
+        "LED_Y1"
+      ]
+    },
+    {
+      "name": "Y2",
+      "nodes": [
+        "U9.7",
+        "U8.8",
+        "LED_Y2"
+      ]
+    },
+    {
+      "name": "Y3",
+      "nodes": [
+        "U9.9",
+        "U8.9",
+        "LED_Y3"
+      ],
+      "note": "Result bus bit 3"
     },
     {
       "name": "S0",
       "nodes": [
         "U5.14",
+        "U9.14",
         "U7.1",
         "SW_S0"
       ],
       "note": "Opcode select bit 0"
     },
     {
-      "name": "S1",
-      "nodes": [
-        "U5.2",
-        "U3.12",
-        "SW_S1"
-      ],
-      "note": "Opcode select bit 1"
-    },
-    {
       "name": "NS0",
       "nodes": [
         "U7.2",
-        "U3.13"
+        "U8.2"
       ],
       "note": "Inverted S0 for SUB decode"
+    },
+    {
+      "name": "S1",
+      "nodes": [
+        "U5.2",
+        "U9.2",
+        "U8.3",
+        "SW_S1"
+      ],
+      "note": "Opcode select bit 1"
     },
     {
       "name": "MUX_G",
       "nodes": [
         "U5.1",
         "U5.15",
+        "U9.1",
+        "U9.15",
         "GND_BUS"
       ],
-      "note": "Both active low strobes tied LOW"
+      "note": "All active low strobes tied LOW"
     },
     {
       "name": "CLOCK",
@@ -479,29 +601,59 @@
       ]
     },
     {
-      "name": "ZERO",
+      "name": "Z01",
+      "nodes": [
+        "U8.4",
+        "U7.9"
+      ],
+      "note": "NOR(Y0,Y1) intermediate for ZERO flag"
+    },
+    {
+      "name": "NZ01",
+      "nodes": [
+        "U7.8",
+        "U8.11"
+      ]
+    },
+    {
+      "name": "Z23",
       "nodes": [
         "U8.10",
-        "U7.9",
+        "U7.11"
+      ],
+      "note": "NOR(Y2,Y3) intermediate for ZERO flag"
+    },
+    {
+      "name": "NZ23",
+      "nodes": [
+        "U7.10",
+        "U8.12"
+      ]
+    },
+    {
+      "name": "ZERO",
+      "nodes": [
+        "U8.13",
         "LED_ZERO"
       ],
-      "note": "NOR tree plus inverter, expansion header"
+      "note": "NOR(NZ01,NZ23) = Z01 AND Z23, high when Y bus is zero"
     },
     {
       "name": "OVERFLOW",
       "nodes": [
-        "U8.13",
-        "LED_OVERFLOW"
+        "J_EXP_OVF"
       ],
-      "note": "Sign compare, expansion header"
+      "note": "Not routed: carry into the MSB is internal to the 74HC283, so signed overflow needs an extra gate stage. Reserved expansion pin, see BREADBOARD_GUIDE.md"
     },
     {
       "name": "SPARE_TIE",
       "nodes": [
         "U7.5",
         "U7.13",
-        "U8.11",
-        "U8.12",
+        "U6.3",
+        "U6.4",
+        "U6.5",
+        "U6.6",
         "GND_BUS"
       ],
       "note": "All unused CMOS inputs defined"
@@ -536,7 +688,7 @@
   ],
   "flag_equations": {
     "CARRY": "COUT of 74HC283; for SUB equals NOT borrow",
-    "ZERO": "NOR(Y0,Y1,Y2,Y3) via 74HC02 plus 74HC14 inverter",
-    "OVERFLOW": "(A3 == B3) && (Y3 != A3) for ADD, (A3 != B3) && (Y3 != A3) for SUB"
+    "ZERO": "ZERO = AND(NOR(Y0,Y1), NOR(Y2,Y3)) via three 74HC02 gates and two 74HC14 inverters",
+    "OVERFLOW": "Not computed on board: carry into the MSB is internal to the 74HC283. Reserved expansion pin J_EXP_OVF"
   }
 }

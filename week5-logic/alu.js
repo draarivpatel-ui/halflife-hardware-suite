@@ -34,7 +34,7 @@ function hc283(A, B, cin, invertB = 0) {
     const b = xor((B >> i) & 1, invertB & 1);
     const cell = fullAdder(a, b, carry);
     sum |= cell.sum << i;
-    if (i === 2) c3 = carry; // carry into bit 3
+    if (i === 2) c3 = cell.carry; // carry out of bit 2 is carry into bit 3
     carry = cell.carry;
   }
   return { sum: sum & MASK, carry: carry & 1, carryIntoMSB: c3 };
@@ -72,7 +72,7 @@ function evaluate(A, B, op) {
     adder: { sum: adder.sum, cout: adder.carry, cin: sub, bx: xor(B, sub ? MASK : 0) },
     hc08_and: andBits, hc32_or: orBits, hc86_xor: xorBits,
     hc153_select: op,
-    hc153_c0: adder.sum, hc153_c1: andBits, hc153_c2: orBits, hc153_c3: xorBits
+    hc153_c0: adder.sum, hc153_c1: adder.sum, hc153_c2: andBits, hc153_c3: orBits
   };
   return {
     A, B, op, opcode: OP_NAMES[op], Y,

@@ -13,9 +13,9 @@ Half Life runs five weekly design tracks before five weeks of building: **PCBs**
 | --- | --- | --- | --- | --- |
 | 1 | PCB | `BenchRail-INA` USB-C dual-rail precision current and voltage monitor | 62 x 42 mm, 2 layer | `$6.90` |
 | 2 | CAD | `HelicalDesk` parametric 3-stage snap-fit stand and rotary detent pod | 3 STL + 1 OBJ | print only |
-| 3 | Music | `PocketChime-R2R` 8-bit ladder chiptune synthesizer | 78 x 56 mm, 2 layer | `$12.18` |
-| 4 | Displays | `GlyphMatrix-128` dual SSD1306 OLED + 74HC595 8x8 LED badge | 88 x 54 mm, 2 layer | `$18.37` |
-| 5 | Breadboard logic | `DiscreteALU-74HC` 4-bit CMOS ALU and step counter | 8 DIP ICs | `$11.92` |
+| 3 | Music | `PocketChime-R2R` 8-bit ladder chiptune synthesizer | 78 x 56 mm, 2 layer | `$12.19` |
+| 4 | Displays | `GlyphMatrix-128` dual SSD1306 OLED + 74HC595 8x8 LED badge | 88 x 54 mm, 2 layer | `$18.56` |
+| 5 | Breadboard logic | `DiscreteALU-74HC` 4-bit CMOS ALU and step counter | 9 DIP ICs | `$12.60` |
 
 All four priced BOMs sit far below the `$100.00` per-project allowance and below the tighter internal caps of `$18.00`, `$22.00`, `$24.00`, and `$16.00`. The total is under `$50.00`, leaving room for shipping, spare passives, and a second prototype round.
 
@@ -52,7 +52,7 @@ Files: `benchrail_ina.kicad_sch`, `benchrail_ina.kicad_pcb`, `benchrail_ina.kica
 
 The `.kicad_pro` declares three net classes: Default (0.20 mm clearance / 0.25 mm track), Power (0.25 mm / 0.60 mm), and Signal (0.15 mm / 0.20 mm). Patterns assign VBUS and 3V3 to Power, SDA and SCL to Signal.
 
-**Power-up check:** current-limited 5 V supply, all DIP switches off, idle draw below 30 mA; read the bus voltage register and confirm the calibration word 0x1000 for a 0.1 ohm shunt at a 40 uA LSB.
+**Power-up check:** current-limited 5 V supply, all DIP switches off, idle draw below 30 mA; read the bus voltage register and confirm the calibration word 0x2800 for a 0.1 ohm shunt at a 40 uA LSB.
 
 ### Week 2: `week2-cad/` HelicalDesk
 
@@ -88,7 +88,7 @@ Eight 74HCxx DIP ICs on two 830-point breadboards. A `74HC283` full adder, `74HC
 2. **CAD**: a Canvas turntable that parses the real ASCII STL, flat-shades it with a depth sort and fixed light vector, supports shaded and wireframe modes, and reports half-edge pairing, signed volume, connected components, and normal agreement.
 3. **Music**: the 256-code R-2R staircase alongside an ADSR / four-voice DDS oscilloscope. **No Web Audio object is created on load, on tab switch, or at any point without an explicit user click.** A muted-by-default checkbox creates a silent context; a separate Play control is required before any oscillator starts.
 4. **Displays**: two 128x64 page buffers drawn pixel by pixel with a 5x7 font, plus a live 74HC595 8x8 row scan showing the shift register contents.
-5. **Logic**: clickable operand bits, five opcodes, gate-level signal flow, flag LEDs, a pin-map browser for all eight ICs, a 74HC161 step counter, and an exhaustive 512 plus 1280 vector verifier.
+5. **Logic**: clickable operand bits, five opcodes, gate-level signal flow, flag LEDs, a pin-map browser for all nine ICs, a 74HC161 step counter, and an exhaustive 512 plus 1280 vector verifier.
 
 `style.css` is a self-contained dark instrument-panel theme with responsive layouts and reduced-motion support. `.nojekyll` keeps GitHub Pages from ignoring the underscore-prefixed or data files.
 

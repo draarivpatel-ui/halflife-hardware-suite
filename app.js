@@ -491,7 +491,8 @@
     ctx.beginPath();
     for (let px = 0; px < W; px++) {
       const t = px / W * total;
-      const env = S.DAC.adsr(t, a, d, s, r, t > a + d + 2200);
+      const off = t > a + d + 2200;
+      const env = S.DAC.adsr(off ? t - a - d - 2200 : t, a, d, s, r, off);
       const y = H - 16 - env * (H - 32);
       if (px === 0) ctx.moveTo(px, y); else ctx.lineTo(px, y);
     }
@@ -501,7 +502,8 @@
     const rate = 22050, baseHz = 220;
     for (let px = 0; px < W; px++) {
       const t = Math.floor(px / W * total);
-      const env = S.DAC.adsr(t, a, d, s, r, t > a + d + 2200);
+      const off = t > a + d + 2200;
+      const env = S.DAC.adsr(off ? t - a - d - 2200 : t, a, d, s, r, off);
       const o = S.DAC.ddsSample(0, { t, rate, baseHz, envelope: env });
       const y = H / 2 - (o.code / 255 - 0.5) * (H - 44);
       if (px === 0) ctx.moveTo(px, y); else ctx.lineTo(px, y);
@@ -546,7 +548,7 @@
         ['week3-music/firmware/pocketchime.ino', 'DDS + ADSR firmware'],
         ['week3-music/gerbers/pocketchime-F_Cu.gbr', 'F.Cu RS-274X'],
         ['week3-music/gerbers/pocketchime.drl', 'Excellon drill'],
-        ['week3-music/bom.csv', 'BOM $12.18']
+        ['week3-music/bom.csv', 'BOM $12.19']
       ].map(([p, n]) => `<a href="${p}" target="_blank" rel="noopener">${esc(n)} &#8599;</a>`).join('');
       audioState('no AudioContext created');
     });
@@ -665,7 +667,7 @@
         ['week4-display/firmware/font5x7_data.h', '5x7 font header'],
         ['week4-display/font5x7.js', 'font table'],
         ['week4-display/gerbers/glyphmatrix-F_Cu.gbr', 'F.Cu RS-274X'],
-        ['week4-display/bom.csv', 'BOM $18.37']
+        ['week4-display/bom.csv', 'BOM $18.56']
       ].map(([p, n]) => `<a href="${p}" target="_blank" rel="noopener">${esc(n)} &#8599;</a>`).join('');
       setInterval(() => {
         if (document.getElementById('w4').hidden) return;
@@ -784,7 +786,7 @@
         ['week5-logic/netlist.json', 'pin accurate netlist'],
         ['week5-logic/BREADBOARD_GUIDE.md', 'breadboard guide'],
         ['week5-logic/alu.js', 'gate level evaluator'],
-        ['week5-logic/bom.csv', 'BOM $11.92']
+        ['week5-logic/bom.csv', 'BOM $12.60']
       ].map(([p, n]) => `<a href="${p}" target="_blank" rel="noopener">${esc(n)} &#8599;</a>`).join('');
     });
     renderALU(); renderPins();
@@ -793,6 +795,6 @@
   // -------------------------------------------------------------------------
   // Boot: week 1 is visible, no other week fetches until its tab is clicked.
   // -------------------------------------------------------------------------
-  $('footTot').textContent = 'BOM $6.90 / $12.18 / $18.37 / $11.92';
+  $('footTot').textContent = 'BOM $6.90 / $12.19 / $18.56 / $12.60';
   loadWeek('w1').then(() => readyWeek('w1'));
 })();

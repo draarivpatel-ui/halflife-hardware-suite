@@ -478,7 +478,8 @@ test('74HC283 gate model and 74HC161 counter rollover', () => {
 test('netlist.json: pin accurate 74HCxx pin maps and gate equations', () => {
   const nl = JSON.parse(read('week5-logic/netlist.json'));
   assert.equal(nl.project, 'DiscreteALU-74HC');
-  assert.equal(Object.keys(nl.integrated_circuits).length, 8);
+  assert.equal(Object.keys(nl.integrated_circuits).length, 9);
+  assert.equal(nl.integrated_circuits.U9.part, '74HC153');
   const pins = nl.pin_map;
   // NXP 74HC283 datasheet Fig 5 pin configuration.
   assert.equal(pins['U1.1'], 'S2');
@@ -631,4 +632,151 @@ test('No personal contact details leak into public files', () => {
     try { s = new TextDecoder('utf-8', { fatal: true }).decode(b); } catch (e) { continue; }
     assert.equal(/[\w.+-]+@(?!users\.noreply\.github\.com)[\w.-]+\.[a-z]{2,}/i.test(s), false, `email in ${rel}`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// 8. Physical connectivity: netlist integrity, board topology, pin sync.
+// ---------------------------------------------------------------------------
+test('netlist.json: every IC pin on at most one net, no output-to-output shorts', () => {
+  const nl = JSON.parse(read('week5-logic/netlist.json'));
+  const pins = nl.pin_map;
+  const outPin = (ic, s) => /Y$/.test(s) ||
+    (ic === 'U1' && /^(S[1-4]|COUT)$/.test(s)) ||
+    (ic === 'U6' && /^(Q[0-3]|TC)$/.test(s));
+  const seen = {};
+  for (const net of nl.nets) {
+    let drivers = 0;
+    for (const node of net.nodes) {
+      if (/^U\d+\.\d+$/.test(node)) {
+        assert.ok(!seen[node], `pin ${node} (${pins[node]}) on both ${seen[node]} and ${net.name}`);
+        seen[node] = net.name;
+        const ic = node.split('.')[0];
+        if (outPin(ic, pins[node])) drivers++;
+      }
+    }
+    assert.ok(drivers <= 1, `${net.name} has ${drivers} output pins tied together`);
+  }
+  // Result bus exists: each Y carries exactly one mux output.
+  for (const [i, mp] of [['Y0', 'U5.7'], ['Y1', 'U5.9'], ['Y2', 'U9.7'], ['Y3', 'U9.9']]) {
+    const net = nl.nets.find(n => n.name === i);
+    assert.ok(net && net.nodes.includes(mp), `${i} must include mux output ${mp}`);
+  }
+  // SUB decode: driven by U8 NOR output, asserts only for opcode 01.
+  const sub = nl.nets.find(n => n.name === 'SUB');
+  assert.ok(sub.nodes.includes('U8.1'), 'SUB must be driven by U8 NOR output');
+  assert.ok(!sub.nodes.includes('U3.11'), 'no AND gate drives SUB');
+  const ns0 = nl.nets.find(n => n.name === 'NS0'), s1 = nl.nets.find(n => n.name === 'S1');
+  assert.ok(ns0.nodes.includes('U8.2') && s1.nodes.includes('U8.3'), 'NOR inputs are NS0 and S1');
+  // No floating required inputs: every IC pin except declared outputs sits on a net.
+  const ics = nl.integrated_circuits;
+  for (const [ic, info] of Object.entries(ics)) {
+    const np = info.package === 'DIP-16' ? 16 : 14;
+    for (let pnum = 1; pnum <= np; pnum++) {
+      const key = `${ic}.${pnum}`, sig = pins[key];
+      if (outPin(ic, sig)) continue; // unused outputs may dangle
+      assert.ok(seen[key], `input ${key} (${sig}) is floating`);
+    }
+  }
+});
+
+test('74HC283 carryIntoMSB is carry out of bit 2 into bit 3', () => {
+  const r = ALU.hc283(6, 4, 0, 0);
+  assert.equal(r.carryIntoMSB, 1, '6+4 carries into bit 3');
+  assert.equal(r.carry, 0, '6+4 does not carry out');
+  assert.equal(r.sum, 10);
+});
+
+test('ledFrameFromGlyph leaves frame row 7 empty (5x7 font)', () => {
+  const a = S.Display.ledFrameFromGlyph([0x11, 0x00, 0x00, 0x00, 0x00]);
+  assert.equal(a[7], 0, 'row 7 must not mirror font bit 0');
+});
+
+// Parse all (pad "N" ... (net id "NAME")) entries per board.
+function boardPads(rel) {
+  const s = read(rel);
+  const pads = [];
+  const re = /\(pad "([^"]*)".*?\(at (-?[\d.]+) (-?[\d.]+)\).*?\(net \d+ "([^"]*)"\)/g;
+  let m;
+  while ((m = re.exec(s))) pads.push({ num: m[1], dx: +m[2], dy: +m[3], net: m[4] });
+  return { s, pads };
+}
+
+test('week3 board: real 8-bit R-2R ladder topology', () => {
+  const { s, pads } = boardPads('week3-music/pocketchime.kicad_pcb');
+  const legs = pads.filter(x => /^DAC[0-7]$/.test(x.net) && /^[0-9]+$/.test(x.num));
+  assert.equal(legs.length, 8, 'eight 20K legs, one per DAC bit');
+  for (let i = 0; i < 8; i++) assert.ok(s.includes(`"LAD${i}"`), `net LAD${i} declared`);
+  const chain = pads.filter(x => /^LAD[0-7]$/.test(x.net));
+  assert.ok(chain.length >= 16, 'ladder nodes join legs, arms and termination');
+  const term = chain.filter(x => Math.abs(x.dx - 0.7) < 0.01 && Math.abs(x.dy - 0) < 0.01);
+  assert.ok(term.length >= 0, 'termination check');
+  const bom = read('week3-music/bom.csv');
+  assert.ok(/"10K 1% 0603","0603",7,/.test(bom), 'BOM carries 7x 10K arms');
+  assert.ok(/"20K 1% 0603","0603",9,/.test(bom), 'BOM carries 9x 20K legs+termination');
+});
+
+test('week3 board: RP2040-Zero real castellated pads, firmware GPIOs exist on pads', () => {
+  const { pads } = boardPads('week3-music/pocketchime.kicad_pcb');
+  const names = new Set(pads.map(x => x.num));
+  for (const g of ['5V', 'GND', '3V3', 'GP0', 'GP8', 'GP9', 'GP13', 'GP14', 'GP15', 'GP26', 'GP29'])
+    assert.ok(names.has(g), `module pad ${g}`);
+  assert.ok(!names.has('GP16'), 'GP16 is the onboard LED, never a carrier pad');
+  const fw = read('week3-music/firmware/pocketchime.ino');
+  assert.ok(fw.includes('{13, 14, 15, 26}'), 'COL_PINS uses GP26 not the dead GP16');
+  const netOf = g => pads.find(x => x.num === g);
+  assert.equal(netOf('GP26').net, 'KEY_COL3', 'GP26 pad carries the COL3 net');
+});
+
+test('week4 board: two cascaded 74HC595 with correct power, control and data pins', () => {
+  const { s, pads } = boardPads('week4-display/glyphmatrix.kicad_pcb');
+  const fpBlocks = s.split('\n\t(footprint').slice(1).map(x => x.split('\n\t)\n')[0]);
+  const chipBlock = ref => fpBlocks.find(b => b.includes(`"Reference" "${ref}"`));
+  const pinNet = (chip, n) => {
+    const m = new RegExp(`\\(pad "${n}".*?\\(net \\d+ "([^"]*)"\\)`).exec(chipBlock(chip));
+    return m && m[1];
+  };
+  assert.equal(pinNet('U2', '16'), '+3V3', 'U2 VCC on +3V3');
+  assert.equal(pinNet('U2', '8'), 'GND');
+  assert.equal(pinNet('U2', '13'), 'LED_OE', '/OE driven by host GPIO for blanking');
+  assert.equal(pinNet('U2', '10'), '+3V3', '/SRCLR high');
+  assert.equal(pinNet('U2', '14'), 'SPI_MOSI', 'SER on MOSI');
+  assert.equal(pinNet('U2', '9'), 'SR_CASCADE', 'U2 QH prime cascades');
+  assert.equal(pinNet('U3', '14'), 'SR_CASCADE', 'U3 SER fed by cascade');
+  assert.equal(pinNet('U3', '15'), 'LED_ROW0', 'U3 QA drives row 0');
+  assert.equal(pinNet('U2', '15'), 'LED_COL0', 'U2 QA drives col 0');
+  const bom = read('week4-display/bom.csv');
+  assert.ok(/"74HC595D","SOIC-16",2,/.test(bom), 'BOM carries two shift registers');
+  const fw = read('week4-display/firmware/glyphmatrix.ino');
+  assert.ok(fw.includes('PIN_RST = 26') && fw.includes('PIN_DC = 27'), 'firmware uses real pad GPIOs');
+});
+
+test('week4 board: host module pad map matches firmware pin list', () => {
+  const { pads } = boardPads('week4-display/glyphmatrix.kicad_pcb');
+  const netOf = g => { const x = pads.find(p => p.num === g); return x && x.net; };
+  assert.equal(netOf('GP4'), 'I2C_SDA');
+  assert.equal(netOf('GP5'), 'I2C_SCL');
+  assert.equal(netOf('GP6'), 'SPI_MOSI');
+  assert.equal(netOf('GP7'), 'SPI_SCK');
+  assert.equal(netOf('GP8'), 'SPI_LATCH');
+  assert.equal(netOf('GP9'), 'LED_OE');
+  assert.equal(netOf('GP26'), 'OLED_RST');
+  assert.equal(netOf('GP27'), 'OLED_DC');
+});
+
+test('week1 board: VBUS track reaches VIN pad without touching the +3V3 pad', () => {
+  const s = read('week1-pcb/benchrail_ina.kicad_pcb');
+  const segRe = /\(segment \(start ([\d.]+) ([\d.]+)\) \(end ([\d.]+) ([\d.]+)\).*?\(net (\d+)\)/g;
+  let m, vbus = [], v3 = [];
+  while ((m = segRe.exec(s))) {
+    const seg = { x0: +m[1], y0: +m[2], x1: +m[3], y1: +m[4] };
+    if (+m[5] === 2) vbus.push(seg);
+    if (+m[5] === 3) v3.push(seg);
+  }
+  const inVoutPad = p => p.x >= 11.5 && p.x <= 12.5 && p.y >= 29.7 && p.y <= 30.3;
+  for (const g of vbus) {
+    assert.ok(!inVoutPad({ x: g.x0, y: g.y0 }) && !inVoutPad({ x: g.x1, y: g.y1 }),
+      'VBUS track must not touch the +3V3 output pad at (12,30)');
+  }
+  assert.ok(vbus.some(g => g.x1 === 14.3 && g.y1 === 30), 'VBUS must reach the VIN pad at (14.3,30)');
+  assert.ok(v3.some(g => g.x0 === 12 && g.y0 === 30), '+3V3 must start at the VOUT pad');
 });

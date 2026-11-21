@@ -277,7 +277,7 @@
       let bits = 0;
       for (let c = 0; c < 8; c++) {
         const col = c < 5 ? glyph[c] : 0;
-        if (col & (1 << (r % 7))) bits |= 1 << c;
+        if (r < 7 && (col & (1 << r))) bits |= 1 << c;
       }
       return bits;
     });
@@ -300,7 +300,7 @@
     for (let i = 0; i < 4; i++) {
       const cell = fullAdder((A >> i) & 1, xor1((B >> i) & 1, invertB), carry);
       sum |= cell.sum << i;
-      if (i === 2) c3 = carry;
+      if (i === 2) c3 = cell.carry;
       carry = cell.carry;
     }
     return { sum, carry, carryIntoMSB: c3 };

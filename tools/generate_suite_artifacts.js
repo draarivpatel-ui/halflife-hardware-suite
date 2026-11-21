@@ -320,7 +320,7 @@ function makeTiltCradle(p) {
              5.2, p.dial_seg, p.boss_bore + 0.2);
   // Front snap receivers.
   for (let i = 0; i < 3; i++) {
-    const x = 8 + i * 22;
+    const x = 8 + i * ((p.cradle_w - 16 - p.snap_w) / 2);
     shiftedBox(x, 0, p.cradle_h + 0.4, x + p.snap_w + 0.4, p.snap_len, p.cradle_h + 1.8);
   }
   return m;
@@ -571,9 +571,13 @@ function week1() {
     b += segment(9, y + 1.2, 27, y + 1.2, g, 'B.Cu', 0.25);
   }
   b += segment(6, 12, 12, 12, v, 'F.Cu', 0.6);
-  b += segment(12, 12, 12, 30, v, 'F.Cu', 0.6);
-  b += segment(12, 30, 24, 30, v3, 'F.Cu', 0.6);
-  b += segment(24, 30, 24, 16, v3, 'F.Cu', 0.6);
+  b += segment(12, 12, 12, 28, v, 'F.Cu', 0.6);
+  b += segment(12, 28, 14.3, 28, v, 'F.Cu', 0.6);
+  b += segment(14.3, 28, 14.3, 30, v, 'F.Cu', 0.6);
+  b += segment(12, 30, 12, 32, v3, 'F.Cu', 0.6);
+  b += segment(12, 32, 24, 32, v3, 'F.Cu', 0.6);
+  b += segment(16.3, 30, 16.3, 32, v3, 'F.Cu', 0.6);
+  b += segment(24, 32, 24, 16, v3, 'F.Cu', 0.6);
   b += segment(24, 16, 38, 16, sda, 'F.Cu', 0.2);
   b += segment(24, 17.2, 38, 17.2, scl, 'F.Cu', 0.2);
   b += segment(18, 22, 24, 22, N('SHUNT_HI')[0], 'F.Cu', 0.3);
@@ -600,9 +604,11 @@ function week1() {
     ['Connector:Conn_01x04', 'J', [['1', 'passive'], ['2', 'passive'], ['3', 'passive'], ['4', 'passive']]],
     ['Connector_USB:USB_C_Receptacle_USB2.0', 'J', [['A1', 'power_in'], ['A4', 'power_in'], ['A5', 'passive'], ['A6', 'bidirectional'], ['A7', 'bidirectional'], ['A9', 'power_in'], ['B4', 'power_in'], ['B5', 'passive']]],
     ['Regulator_Linear:AMS1117-3.3', 'U', [['1', 'power_in'], ['2', 'power_out'], ['3', 'power_in']]],
-    ['Sensor_Current:INA219', 'U', [['1', 'power_in'], ['2', 'power_in'], ['3', 'input'], ['4', 'bidirectional'], ['5', 'bidirectional'], ['6', 'input'], ['7', 'input'], ['8', 'power_in']]]
+    ['Sensor_Current:INA219', 'U', [['1', 'power_in', 'IN+'], ['2', 'power_in', 'GND'], ['3', 'input', 'SCL'], ['4', 'bidirectional', 'SDA'], ['5', 'bidirectional', 'VS'], ['6', 'input', 'A0'], ['7', 'input', 'IN-'], ['8', 'power_in', 'GND2']]]
   ];
+  const libPins = {};
   for (const [id, prefix, pins] of symDefs) {
+    libPins[id] = pins.map(p => p[0]);
     s += `\t\t(symbol "${id}" (pin_numbers hide) (pin_names (offset 0.508)) (exclude_from_sim no) (in_bom yes) (on_board yes)\n`;
     s += `\t\t\t(property "Reference" "${prefix}" (at 0 2.54 0) (effects (font (size 1.27 1.27))))\n`;
     s += `\t\t\t(property "Value" "${id.split(':')[1]}" (at 0 -2.54 0) (effects (font (size 1.27 1.27))))\n`;
@@ -611,49 +617,44 @@ function week1() {
     s += `\t\t\t(property "Description" "" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))\n`;
     s += `\t\t\t(symbol "${id.split(':')[1]}_0_1"\n\t\t\t\t(rectangle (start -2.54 2.54) (end 2.54 -2.54) (stroke (width 0.254) (type default)) (fill (type background)))\n\t\t\t)\n`;
     s += `\t\t\t(symbol "${id.split(':')[1]}_1_1"\n`;
-    pins.forEach(([num, type], i) => {
+    pins.forEach(([num, type, name], i) => {
       const y = 5.08 - i * 2.54;
-      s += `\t\t\t\t(pin ${type} line (at -5.08 ${f(y, 2)} 0) (length 2.54) (name "${num}" (effects (font (size 1.27 1.27)))) (number "${num}" (effects (font (size 1.27 1.27)))))\n`;
+      s += `\t\t\t\t(pin ${type} line (at -5.08 ${f(y, 2)} 0) (length 2.54) (name "${name || num}" (effects (font (size 1.27 1.27)))) (number "${num}" (effects (font (size 1.27 1.27)))))\n`;
     });
     s += `\t\t\t)\n\t\t)\n`;
   }
   s += '\t)\n';
-  // Placed symbols. Each has an instances block referencing the root sheet.
+  // Placed symbols. pinNets gives each pin its schematic net so the sheet
+  // carries the same connectivity as the PCB. Each has an instances block
+  // referencing the root sheet.
   const placed = [
-    ['J1', 'USB4105-GF-A', 'Connector_USB:USB_C_Receptacle_USB2.0', 30, 30, 'Connector_USB:USB_C_Receptacle_GCT_USB4105'],
-    ['U3', 'AMS1117-3.3', 'Regulator_Linear:AMS1117-3.3', 70, 30, 'Package_TO_SOT_SMD:SOT-223-3_TabPin2'],
-    ['U1', 'INA219AIDCNR', 'Sensor_Current:INA219', 120, 30, 'Package_TO_SOT_SMD:SOT-23-8'],
-    ['U2', 'INA219AIDCNR', 'Sensor_Current:INA219', 170, 30, 'Package_TO_SOT_SMD:SOT-23-8'],
-    ['R1', '0R1 1% 1206', 'Device:R', 105, 55, 'Resistor_SMD:R_1206_3216Metric'],
-    ['R2', '0R1 1% 1206', 'Device:R', 155, 55, 'Resistor_SMD:R_1206_3216Metric'],
-    ['C1', '100n', 'Device:C', 85, 55, 'Capacitor_SMD:C_0603_1608Metric'],
-    ['C2', '10u', 'Device:C', 90, 55, 'Capacitor_SMD:C_0603_1608Metric'],
-    ['J2', 'Conn_01x04', 'Connector:Conn_01x04', 200, 30, 'Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical'],
+    ['J1', 'USB4105-GF-A', 'Connector_USB:USB_C_Receptacle_USB2.0', 30, 30, 'Connector_USB:USB_C_Receptacle_GCT_USB4105', ['GND', 'VBUS', 'CC1', 'D+', 'D-', 'VBUS', 'VBUS', 'CC2']],
+    ['U3', 'AMS1117-3.3', 'Regulator_Linear:AMS1117-3.3', 70, 30, 'Package_TO_SOT_SMD:SOT-223-3_TabPin2', ['GND', '+3V3', 'VBUS']],
+    ['U1', 'INA219AIDCNR', 'Sensor_Current:INA219', 120, 30, 'Package_TO_SOT_SMD:SOT-23-8', ['SHUNT_HI', 'GND', 'SCL', 'SDA', '+3V3', 'ADDR0', 'SHUNT_LO', 'GND']],
+    ['U2', 'INA219AIDCNR', 'Sensor_Current:INA219', 170, 30, 'Package_TO_SOT_SMD:SOT-23-8', ['VRAIL-', 'GND', 'SCL', 'SDA', '+3V3', 'VBUS', 'VRAIL+', 'GND']],
+    ['R1', '0R1 1% 1206', 'Device:R', 105, 55, 'Resistor_SMD:R_1206_3216Metric', ['SHUNT_HI', 'SHUNT_LO']],
+    ['R2', '0R1 1% 1206', 'Device:R', 155, 55, 'Resistor_SMD:R_1206_3216Metric', ['VRAIL+', 'VRAIL-']],
+    ['C1', '100n', 'Device:C', 85, 55, 'Capacitor_SMD:C_0603_1608Metric', ['+3V3', 'GND']],
+    ['C2', '10u', 'Device:C', 90, 55, 'Capacitor_SMD:C_0603_1608Metric', ['VBUS', 'GND']],
+    ['J2', 'Conn_01x04', 'Connector:Conn_01x04', 200, 30, 'Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical', ['+3V3', 'SDA', 'SCL', 'GND']],
     ['#PWR01', 'GND', 'power:GND', 70, 70, ''],
     ['#PWR02', '+3V3', 'power:+3V3', 90, 20, ''],
     ['#PWR03', '+5V', 'power:+5V', 50, 20, '']
   ];
   const rootUuid = 'a1b2c3d4-0000-4000-8000-000000000001';
-  for (const [ref, val, lib, x, y, fp] of placed) {
+  for (const [ref, val, lib, x, y, fp, pinNets] of placed) {
     s += `\t(symbol (lib_id "${lib}") (at ${f(x, 2)} ${f(y, 2)} 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "${uid()}")\n`;
     s += `\t\t(property "Reference" "${ref}" (at ${f(x + 3, 2)} ${f(y - 2, 2)} 0) (effects (font (size 1.27 1.27))))\n`;
     s += `\t\t(property "Value" "${val}" (at ${f(x + 3, 2)} ${f(y + 2, 2)} 0) (effects (font (size 1.27 1.27))))\n`;
     s += `\t\t(property "Footprint" "${fp}" (at ${f(x, 2)} ${f(y, 2)} 0) (effects (font (size 1.27 1.27)) (hide yes)))\n`;
-    s += `\t\t(pin "1" (uuid "${uid()}"))\n\t\t(pin "2" (uuid "${uid()}"))\n`;
+    for (const pn of libPins[lib] || ['1']) s += `\t\t(pin "${pn}" (uuid "${uid()}"))\n`;
     s += `\t\t(instances (project "benchrail_ina" (path "/${rootUuid}" (reference "${ref}") (unit 1))))\n\t)\n`;
-  }
-  // Wires and labels for the two rail senses and the I2C bus.
-  const wires = [
-    [35, 30, 65, 30, 'VBUS'], [75, 30, 115, 30, '+3V3'],
-    [125, 30, 165, 30, 'SDA'], [170, 30, 195, 30, 'SCL'],
-    [100, 55, 120, 55, 'SHUNT_HI'], [150, 55, 170, 55, 'VRAIL+'],
-    [70, 55, 90, 55, 'GND']
-  ];
-  for (const [x0, y0, x1, y1] of wires) {
-    s += `\t(wire (pts (xy ${f(x0, 2)} ${f(y0, 2)}) (xy ${f(x1, 2)} ${f(y1, 2)})) (stroke (width 0) (type default)) (uuid "${uid()}"))\n`;
-  }
-  for (const [x, y, name] of [[50, 30, 'VBUS'], [90, 30, '+3V3'], [140, 30, 'SDA'], [185, 30, 'SCL'], [110, 55, 'SHUNT_HI'], [160, 55, 'VRAIL+']]) {
-    s += `\t(label "${name}" (at ${f(x, 2)} ${f(y - 2, 2)} 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "${uid()}"))\n`;
+    // Labeled stub wire on every pin so ERC nets resolve to the PCB nets.
+    (pinNets || []).forEach((net, i) => {
+      const py = y + 5.08 - i * 2.54;
+      s += `\t(wire (pts (xy ${f(x - 7.62, 2)} ${f(py, 2)}) (xy ${f(x - 12.7, 2)} ${f(py, 2)})) (stroke (width 0) (type default)) (uuid "${uid()}"))\n`;
+      s += `\t(label "${net}" (at ${f(x - 12.7, 2)} ${f(py - 1.27, 2)} 0) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "${uid()}"))\n`;
+    });
   }
   s += `\t(sheet_instances (path "/" (page "1")))\n\t(embedded_fonts no)\n)\n`;
   write('week1-pcb/benchrail_ina.kicad_sch', s);
@@ -664,7 +665,7 @@ function week1() {
 // ---------------------------------------------------------------------------
 function week3() {
   const W = 78, H = 56;
-  const nets = ['GND', '+3V3', 'VBUS', 'DAC0', 'DAC1', 'DAC2', 'DAC3', 'DAC4', 'DAC5', 'DAC6', 'DAC7', 'AUDIO_L', 'AUDIO_R', 'KEY_ROW0', 'KEY_ROW1', 'KEY_ROW2', 'KEY_COL0', 'KEY_COL1', 'KEY_COL2', 'KEY_COL3', 'SPI_MOSI', 'SPI_SCK', 'I2C_SDA', 'I2C_SCL'];
+  const nets = ['GND', '+3V3', 'VBUS', 'DAC0', 'DAC1', 'DAC2', 'DAC3', 'DAC4', 'DAC5', 'DAC6', 'DAC7', 'AUDIO_L', 'AUDIO_R', 'KEY_ROW0', 'KEY_ROW1', 'KEY_ROW2', 'KEY_COL0', 'KEY_COL1', 'KEY_COL2', 'KEY_COL3', 'LAD0', 'LAD1', 'LAD2', 'LAD3', 'LAD4', 'LAD5', 'LAD6', 'LAD7'];
   const N = n => [nets.indexOf(n) + 1, n];
   let b = boardHeader('PocketChime-R2R 8-Bit Ladder Chiptune Synth', W, H, nets);
   b += boardEdge(W, H);
@@ -672,34 +673,38 @@ function week3() {
   b += silkText(39, 52.5, 'W3  HALF LIFE  |  4 VOICE DDS + ADSR', 'F.SilkS', 0.9);
   b += silkText(39, 54.0, 'RP2040-ZERO / MCP6002-I/SN / 12 KEY', 'B.SilkS', 0.9);
 
-  // U1 RP2040-Zero module footprint with castellated edge pads.
-  b += `\t(footprint "Module:RP2040-Zero"\n\t\t(layer "F.Cu")\n\t\t(uuid "${uid()}")\n\t\t(at 14 20)\n\t\t(descr "RP2040-Zero compatible module, 20 castellated pads")\n`;
-  b += `\t\t(property "Reference" "U1" (at 0 -11 0) (layer "F.SilkS") (uuid "${uid()}") (effects (font (size 0.9 0.9) (thickness 0.12))))\n`;
-  b += `\t\t(property "Value" "RP2040-Zero" (at 0 11 0) (layer "F.Fab") (uuid "${uid()}") (effects (font (size 0.8 0.8)) (hide yes)))\n`;
-  b += `\t\t(fp_rect (start -9 -9) (end 9 9) (stroke (width 0.05) (type default)) (fill no) (layer "F.CrtYd") (uuid "${uid()}"))\n`;
-  b += `\t\t(fp_rect (start -9 -9) (end 9 9) (stroke (width 0.05) (type default)) (fill no) (layer "B.CrtYd") (uuid "${uid()}"))\n`;
-  const rpPins = ['GND', '+3V3', 'DAC0', 'DAC1', 'DAC2', 'DAC3', 'DAC4', 'DAC5', 'DAC6', 'DAC7',
-                  'KEY_ROW0', 'KEY_ROW1', 'KEY_ROW2', 'KEY_COL0', 'KEY_COL1', 'KEY_COL2',
-                  'KEY_COL3', 'I2C_SDA', 'I2C_SCL', 'VBUS'];
-  rpPins.forEach((n, i) => b += smdPad(String(i + 1), -8.4 + (i % 10) * 1.87, i < 10 ? -8.6 : 8.6, 1.2, 1.6, N(n)));
+  // U1 RP2040-Zero: real Waveshare castellated pad pattern (module 18 x 23.5 mm,
+  // USB edge up). Left edge 5V,GND,3V3,GP29..GP26,GP15,GP14; bottom GP13..GP9;
+  // right edge GP0..GP8. GP16 (onboard WS2812) is not on any pad.
+  b += `\t(footprint "Module:RP2040-Zero"\n\t\t(layer "F.Cu")\n\t\t(uuid "${uid()}")\n\t\t(at 14 20)\n\t\t(descr "RP2040-Zero castellated module 18x23.5mm, USB edge up")\n`;
+  b += `\t\t(property "Reference" "U1" (at 0 -13 0) (layer "F.SilkS") (uuid "${uid()}") (effects (font (size 0.9 0.9) (thickness 0.12))))\n`;
+  b += `\t\t(property "Value" "RP2040-Zero" (at 0 13 0) (layer "F.Fab") (uuid "${uid()}") (effects (font (size 0.8 0.8)) (hide yes)))\n`;
+  b += `\t\t(fp_rect (start -9.5 -12) (end 9.5 12) (stroke (width 0.05) (type default)) (fill no) (layer "F.CrtYd") (uuid "${uid()}"))\n`;
+  b += `\t\t(fp_rect (start -9.5 -12) (end 9.5 12) (stroke (width 0.05) (type default)) (fill no) (layer "B.CrtYd") (uuid "${uid()}"))\n`;
+  const NC = [0, ''];
+  const w3Net = { '5V': 'VBUS', 'GND': 'GND', '3V3': '+3V3', 'GP2': 'DAC0', 'GP3': 'DAC1', 'GP4': 'DAC2', 'GP5': 'DAC3', 'GP6': 'DAC4', 'GP7': 'DAC5', 'GP8': 'DAC6', 'GP9': 'DAC7', 'GP10': 'KEY_ROW0', 'GP11': 'KEY_ROW1', 'GP12': 'KEY_ROW2', 'GP13': 'KEY_COL0', 'GP14': 'KEY_COL1', 'GP15': 'KEY_COL2', 'GP26': 'KEY_COL3' };
+  const padNet = g => w3Net[g] ? N(w3Net[g]) : NC;
+  ['5V', 'GND', '3V3', 'GP29', 'GP28', 'GP27', 'GP26', 'GP15', 'GP14'].forEach((g, i) => b += smdPad(g, -9, -8 + i * 2, 1.2, 1.6, padNet(g)));
+  ['GP13', 'GP12', 'GP11', 'GP10', 'GP9'].forEach((g, i) => b += smdPad(g, -4 + i * 2, 11.75, 1.6, 1.2, padNet(g)));
+  ['GP0', 'GP1', 'GP2', 'GP3', 'GP4', 'GP5', 'GP6', 'GP7', 'GP8'].forEach((g, i) => b += smdPad(g, 9, -8 + i * 2, 1.2, 1.6, padNet(g)));
   b += '\t)\n';
 
-  // R-2R ladder: 8 x 10k horizontal arms and 7 x 20k vertical legs plus 20k
-  // termination. All 0603, all 1% tolerance, laid out on a 2.54 mm pitch.
+  // Real 8-bit R-2R ladder: each DAC pin feeds a 20K leg into its ladder node
+  // LAD_i, adjacent nodes join through 10K arms, LAD0 terminates through 20K,
+  // and the LAD7 output node feeds the MCP6002 buffer input.
   const r2r = [];
-  for (let i = 0; i < 8; i++) r2r.push({ ref: `R${i + 1}`, val: '10K 1% 0603', x: 30 + i * 4.2, y: 12, net: [`DAC${7 - i}`, 'GND'] });
-  for (let i = 0; i < 7; i++) r2r.push({ ref: `R${9 + i}`, val: '20K 1% 0603', x: 32.1 + i * 4.2, y: 17, net: [null, null] });
-  r2r.push({ ref: 'R16', val: '20K 1% 0603', x: 30, y: 22, net: [null, null] });
+  for (let i = 0; i < 8; i++) r2r.push({ ref: `R${8 + i}`, val: '20K 1% 0603', x: 30 + i * 4.2, y: 12, net: [`DAC${i}`, `LAD${i}`] });
+  for (let i = 0; i < 7; i++) r2r.push({ ref: `R${1 + i}`, val: '10K 1% 0603', x: 32.1 + i * 4.2, y: 17, net: [`LAD${i}`, `LAD${i + 1}`] });
+  r2r.push({ ref: 'R16', val: '20K 1% 0603', x: 30, y: 22, net: ['LAD0', 'GND'] });
   for (const r of r2r) {
-    const nA = r.net[0] ? N(r.net[0]) : N('GND');
     b += fpBox(r.ref, r.val, 'Resistor_SMD:R_0603_1608Metric', r.x, r.y, 1.6, 0.8);
-    b += smdPad('1', -0.7, 0, 0.8, 0.9, nA);
-    b += smdPad('2', 0.7, 0, 0.8, 0.9, N('GND'));
+    b += smdPad('1', -0.7, 0, 0.8, 0.9, N(r.net[0]));
+    b += smdPad('2', 0.7, 0, 0.8, 0.9, N(r.net[1]));
     b += '\t)\n';
   }
 
   b += fpBox('U2', 'MCP6002-I/SN', 'Package_SO:SOIC-8_3.9x4.9mm_P1.27mm', 42, 31, 5.0, 4.0);
-  const u2pins = [N('AUDIO_L'), N('GND'), N('+3V3'), N('AUDIO_R'), N('DAC7'), N('GND'), N('AUDIO_L'), N('+3V3')];
+  const u2pins = [N('AUDIO_L'), N('GND'), N('+3V3'), N('AUDIO_R'), N('LAD7'), N('GND'), N('AUDIO_L'), N('+3V3')];
   u2pins.forEach((n, i) => b += smdPad(String(i + 1), i < 4 ? -1.9 : 1.9, -1.905 + (i % 4) * 1.27, 1.3, 0.6, n));
   b += '\t)\n';
 
@@ -733,12 +738,27 @@ function week3() {
     b += '\t)\n';
   }
   const g = N('GND')[0];
-  for (let i = 0; i < 8; i++) {
-    b += segment(14, 11 + i, 30 + i * 4.2, 11 + i, N(`DAC${i}`)[0], 'F.Cu', 0.2);
-    b += segment(30 + i * 4.2, 11 + i, 30 + i * 4.2, 12, N(`DAC${i}`)[0], 'F.Cu', 0.2);
+  // DAC bus: right-edge host pads GP2..GP8 to the 20K legs, GP9 (bottom) for bit 7.
+  for (let i = 0; i < 7; i++) {
+    b += segment(23, 16 + i * 2, 29.3 + i * 4.2, 16 + i * 2, N(`DAC${i}`)[0], 'F.Cu', 0.2);
+    b += segment(29.3 + i * 4.2, 16 + i * 2, 29.3 + i * 4.2, 12, N(`DAC${i}`)[0], 'F.Cu', 0.2);
   }
-  b += segment(30, 22, 42, 22, N('DAC7')[0], 'F.Cu', 0.2);
-  b += segment(42, 22, 42, 31, N('DAC7')[0], 'F.Cu', 0.2);
+  b += segment(18, 31.75, 18, 34, N('DAC7')[0], 'F.Cu', 0.2);
+  b += segment(18, 34, 58.7, 34, N('DAC7')[0], 'F.Cu', 0.2);
+  b += segment(58.7, 34, 58.7, 12, N('DAC7')[0], 'F.Cu', 0.2);
+  // Ladder node rails: leg pad 2 joins both neighbor 10K arm pads.
+  for (let i = 0; i < 8; i++) {
+    b += segment(30.7 + i * 4.2, 12, 30.7 + i * 4.2, 17, N(`LAD${i}`)[0], 'F.Cu', 0.2);
+    if (i < 7) {
+      b += segment(30.7 + i * 4.2, 17, 31.4 + i * 4.2, 17, N(`LAD${i}`)[0], 'F.Cu', 0.2);
+      b += segment(32.8 + i * 4.2, 17, 34.9 + i * 4.2, 17, N(`LAD${i + 1}`)[0], 'F.Cu', 0.2);
+    }
+  }
+  b += segment(30.7, 17, 30.7, 22, N('LAD0')[0], 'F.Cu', 0.2);
+  b += segment(30.7, 22, 29.3, 22, N('LAD0')[0], 'F.Cu', 0.2);
+  // LAD7 ladder output to the MCP6002 non-inverting input (pad 5).
+  b += segment(60.1, 12, 60.1, 29.1, N('LAD7')[0], 'F.Cu', 0.25);
+  b += segment(60.1, 29.1, 43.9, 29.1, N('LAD7')[0], 'F.Cu', 0.25);
   b += segment(42, 31, 70, 31, N('AUDIO_L')[0], 'F.Cu', 0.25);
   b += segment(42, 33, 70, 33, N('AUDIO_R')[0], 'B.Cu', 0.25);
   for (const [x, y] of [[8, 8], [24, 28], [34, 28], [50, 28], [60, 40], [70, 44]]) b += via(x, y, g, 0.8, 0.4);
@@ -756,7 +776,7 @@ function week3() {
 // ---------------------------------------------------------------------------
 function week4() {
   const W = 88, H = 54;
-  const nets = ['GND', '+3V3', 'VBUS', 'I2C_SDA', 'I2C_SCL', 'OLED_RST', 'OLED_DC', 'SPI_MOSI', 'SPI_SCK', 'SPI_LATCH', 'LED_ROW0', 'LED_ROW1', 'LED_ROW2', 'LED_ROW3', 'LED_ROW4', 'LED_ROW5', 'LED_ROW6', 'LED_ROW7', 'LED_COL0', 'LED_COL1', 'LED_COL2', 'LED_COL3', 'LED_COL4', 'LED_COL5', 'LED_COL6', 'LED_COL7'];
+  const nets = ['GND', '+3V3', 'VBUS', 'I2C_SDA', 'I2C_SCL', 'OLED_RST', 'OLED_DC', 'SPI_MOSI', 'SPI_SCK', 'SPI_LATCH', 'LED_OE', 'SR_CASCADE', 'SR_QH2', 'LED_ROW0', 'LED_ROW1', 'LED_ROW2', 'LED_ROW3', 'LED_ROW4', 'LED_ROW5', 'LED_ROW6', 'LED_ROW7', 'LED_COL0', 'LED_COL1', 'LED_COL2', 'LED_COL3', 'LED_COL4', 'LED_COL5', 'LED_COL6', 'LED_COL7'];
   const N = n => [nets.indexOf(n) + 1, n];
   let b = boardHeader('GlyphMatrix-128 Dual OLED and 8x8 LED Telemetry Badge', W, H, nets);
   b += boardEdge(W, H);
@@ -764,13 +784,19 @@ function week4() {
   b += silkText(44, 50.4, 'W4  HALF LIFE  |  SSD1306 x2 + 74HC595', 'F.SilkS', 0.9);
   b += silkText(44, 52.0, 'HW I2C / TIMER MULTIPLEX SCAN', 'B.SilkS', 0.9);
 
-  b += `\t(footprint "Module:RP2040-Zero"\n\t\t(layer "F.Cu")\n\t\t(uuid "${uid()}")\n\t\t(at 12 27)\n\t\t(descr "RP2040-Zero host module")\n`;
-  b += `\t\t(property "Reference" "U1" (at 0 -11 0) (layer "F.SilkS") (uuid "${uid()}") (effects (font (size 0.9 0.9))))\n`;
-  b += `\t\t(property "Value" "RP2040-Zero" (at 0 11 0) (layer "F.Fab") (uuid "${uid()}") (effects (font (size 0.8 0.8)) (hide yes)))\n`;
-  b += `\t\t(fp_rect (start -9 -9) (end 9 9) (stroke (width 0.05) (type default)) (fill no) (layer "F.CrtYd") (uuid "${uid()}"))\n`;
-  b += `\t\t(fp_rect (start -9 -9) (end 9 9) (stroke (width 0.05) (type default)) (fill no) (layer "B.CrtYd") (uuid "${uid()}"))\n`;
-  const hostPins = ['GND', '+3V3', 'I2C_SDA', 'I2C_SCL', 'OLED_RST', 'OLED_DC', 'SPI_MOSI', 'SPI_SCK', 'SPI_LATCH', 'VBUS'];
-  hostPins.forEach((n, i) => b += smdPad(String(i + 1), -8.4 + i * 1.87, -8.6, 1.2, 1.6, N(n)));
+  // U1 RP2040-Zero: real Waveshare castellated pad pattern (same as week 3),
+  // with board nets bound to the GPIO pads the firmware actually uses.
+  b += `\t(footprint "Module:RP2040-Zero"\n\t\t(layer "F.Cu")\n\t\t(uuid "${uid()}")\n\t\t(at 12 27)\n\t\t(descr "RP2040-Zero castellated module 18x23.5mm, USB edge up")\n`;
+  b += `\t\t(property "Reference" "U1" (at 0 -13 0) (layer "F.SilkS") (uuid "${uid()}") (effects (font (size 0.9 0.9))))\n`;
+  b += `\t\t(property "Value" "RP2040-Zero" (at 0 13 0) (layer "F.Fab") (uuid "${uid()}") (effects (font (size 0.8 0.8)) (hide yes)))\n`;
+  b += `\t\t(fp_rect (start -9.5 -12) (end 9.5 12) (stroke (width 0.05) (type default)) (fill no) (layer "F.CrtYd") (uuid "${uid()}"))\n`;
+  b += `\t\t(fp_rect (start -9.5 -12) (end 9.5 12) (stroke (width 0.05) (type default)) (fill no) (layer "B.CrtYd") (uuid "${uid()}"))\n`;
+  const NC = [0, ''];
+  const w4Net = { '5V': 'VBUS', 'GND': 'GND', '3V3': '+3V3', 'GP4': 'I2C_SDA', 'GP5': 'I2C_SCL', 'GP6': 'SPI_MOSI', 'GP7': 'SPI_SCK', 'GP8': 'SPI_LATCH', 'GP9': 'LED_OE', 'GP26': 'OLED_RST', 'GP27': 'OLED_DC' };
+  const padNet = g => w4Net[g] ? N(w4Net[g]) : NC;
+  ['5V', 'GND', '3V3', 'GP29', 'GP28', 'GP27', 'GP26', 'GP15', 'GP14'].forEach((g, i) => b += smdPad(g, -9, -8 + i * 2, 1.2, 1.6, padNet(g)));
+  ['GP13', 'GP12', 'GP11', 'GP10', 'GP9'].forEach((g, i) => b += smdPad(g, -4 + i * 2, 11.75, 1.6, 1.2, padNet(g)));
+  ['GP0', 'GP1', 'GP2', 'GP3', 'GP4', 'GP5', 'GP6', 'GP7', 'GP8'].forEach((g, i) => b += smdPad(g, 9, -8 + i * 2, 1.2, 1.6, padNet(g)));
   b += '\t)\n';
 
   // Two SSD1306 128x64 0.96 inch OLED modules on 4-pin headers.
@@ -785,12 +811,18 @@ function week4() {
     b += silkText(x, 8.0, `OLED ${i} 0x3${i === 1 ? 'C' : 'D'}`, 'F.SilkS', 0.8);
   }
 
-  // U2 74HC595 SOIC-16 shift register for row and column drive.
-  b += fpBox('U2', '74HC595D', 'Package_SO:SOIC-16_3.9x9.9mm_P1.27mm', 44, 34, 6.0, 10.0);
-  const srPins = [N('LED_COL1'), N('LED_COL2'), N('LED_COL3'), N('LED_COL4'), N('LED_COL5'), N('LED_COL6'), N('LED_COL7'), N('GND'),
-                  N('LED_COL0'), N('SPI_MOSI'), N('SPI_SCK'), N('SPI_LATCH'), N('+3V3'), N('LED_ROW0'), N('LED_ROW1'), N('LED_ROW2')];
-  srPins.forEach((n, i) => b += smdPad(String(i + 1), i < 8 ? -2.4 : 2.4, -4.445 + (i % 8) * 1.27, 1.3, 0.6, n));
-  b += '\t)\n';
+  // Two cascaded 74HC595 shift registers (matches the firmware 16-bit shift):
+  // U2 drives LED_COL0..7, U3 drives LED_ROW0..7 through the row resistors.
+  // Real pinout: 1-7 QB..QH, 8 GND, 9 QH', 10 /SRCLR, 11 SRCLK, 12 RCLK,
+  // 13 /OE, 14 SER, 15 QA, 16 VCC.
+  const srPads = (ref, x, y, qNets, serNet, qhNet) => {
+    let s = fpBox(ref, '74HC595D', 'Package_SO:SOIC-16_3.9x9.9mm_P1.27mm', x, y, 6.0, 10.0);
+    const pins = [...qNets.slice(1), N('GND'), qhNet, N('+3V3'), N('SPI_SCK'), N('SPI_LATCH'), N('LED_OE'), serNet, qNets[0], N('+3V3')];
+    pins.forEach((n, i) => s += smdPad(String(i + 1), i < 8 ? -2.4 : 2.4, -4.445 + (i % 8) * 1.27, 1.3, 0.6, n));
+    return s + '\t)\n';
+  };
+  b += srPads('U2', 44, 34, [...Array(8)].map((_, i) => N(`LED_COL${i}`)), N('SPI_MOSI'), N('SR_CASCADE'));
+  b += srPads('U3', 52, 34, [...Array(8)].map((_, i) => N(`LED_ROW${i}`)), N('SR_CASCADE'), N('SR_QH2'));
 
   // 8x8 LED matrix footprint with 16 pins and its own courtyard.
   b += `\t(footprint "Display:LED_Matrix_8x8_20mm"\n\t\t(layer "F.Cu")\n\t\t(uuid "${uid()}")\n\t\t(at 66 36)\n\t\t(descr "8x8 LED matrix, 20 mm, row anode / column cathode")\n`;
@@ -850,17 +882,17 @@ const GERBER_LAYER_META = {
   'B.Paste': ['Paste,Bot', 'Positive']
 };
 
-function gerber(layerName, w, h, items) {
+function gerber(layerName, w, h, items, tag) {
   const meta = GERBER_LAYER_META[layerName];
   if (!meta) throw new Error(`Unknown Gerber layer: ${layerName}`);
   const [fileFn, filePolarity] = meta;
   const L = [];
-  L.push('G04 BenchRail / PocketChime / GlyphMatrix RS-274X plot*');
+  L.push(`G04 ${tag} RS-274X plot*`);
   L.push(`G04 Layer: ${layerName}*`);
-  L.push('G04 halflife-hardware-suite, KiCad 8 compatible output*');
+  L.push('G04 halflife-hardware-suite, generated by tools/generate_suite_artifacts.js*');
   L.push('%FSLAX46Y46*%');
   L.push('%MOMM*%');
-  L.push('%TF.GenerationSoftware,KiCad,8.0,halflife-hardware-suite*%');
+  L.push('%TF.GenerationSoftware,halflife-hardware-suite,tools/generate_suite_artifacts.js*%');
   L.push(`%TF.FileFunction,${fileFn}*%`);
   L.push(`%TF.FilePolarity,${filePolarity}*%`);
   L.push('%TD*%');
@@ -936,7 +968,7 @@ function gerberSet(dir, w, h, pads, drills, tag) {
     ];
     else items = pads.map(p => ({ t: 'flash', x: p.x, y: p.y, ap: p.ap || 12 }));
     const gbrName = `${tag}-${fn}`;
-    const gbrText = gerber(layer, w, h, items);
+    const gbrText = gerber(layer, w, h, items, tag);
     write(`${dir}/gerbers/${gbrName}`, gbrText);
     archiveEntries.push([gbrName, gbrText]);
   }
@@ -975,10 +1007,10 @@ const BOM1 = [
   ['PCB', 'BenchRail-INA 2L 62x42mm', 'FR4', 1, 'JLCPCB', 'PCB-2L-62x42', 2.40, '2 layer 1.6 mm ENIG, 5 pcs split cost']
 ];
 const BOM3 = [
-  ['U1', 'RP2040-Zero', 'Module', 1, 'DigiKey', '1528-2560-ND', 4.95, 'RP2040 module, 20 castellated pads'],
+  ['U1', 'RP2040-Zero', 'Module', 1, 'DigiKey', '1528-2560-ND', 4.95, 'RP2040 module, 23 castellated pads'],
   ['U2', 'MCP6002-I/SN', 'SOIC-8', 1, 'LCSC', 'C134062', 0.42, 'Dual rail-to-rail op amp buffer'],
-  ['R1-R8', '10K 1% 0603', '0603', 8, 'LCSC', 'C25804', 0.01, 'R-2R ladder R arms'],
-  ['R9-R16', '20K 1% 0603', '0603', 8, 'DigiKey', '311-20.0KHRCT-ND', 0.02, 'R-2R ladder 2R legs and termination'],
+  ['R1-R7', '10K 1% 0603', '0603', 7, 'LCSC', 'C25804', 0.01, 'R-2R ladder series R arms'],
+  ['R8-R16', '20K 1% 0603', '0603', 9, 'DigiKey', '311-20.0KHRCT-ND', 0.02, 'R-2R ladder 2R legs and termination'],
   ['SW1-SW12', 'B3U-1000P tactile', 'SMD', 12, 'LCSC', 'C393939', 0.16, '12 key chromatic matrix, 3x4'],
   ['J1', 'SJ1-3523N TRS jack', 'THT', 1, 'DigiKey', 'CP1-3523N-ND', 0.89, '3.5 mm stereo TRS output'],
   ['C1-C4', '100n 0603 X7R', '0603', 4, 'LCSC', 'C14663', 0.01, 'Decoupling'],
@@ -988,7 +1020,7 @@ const BOM3 = [
 ];
 const BOM4 = [
   ['U1', 'RP2040-Zero', 'Module', 1, 'DigiKey', '1528-2560-ND', 4.95, 'Host MCU, hardware I2C and SPI'],
-  ['U2', '74HC595D', 'SOIC-16', 1, 'LCSC', 'C59493', 0.19, '8 bit shift register with output latch'],
+  ['U2,U3', '74HC595D', 'SOIC-16', 2, 'LCSC', 'C59493', 0.19, 'Cascaded 8 bit shift registers for columns and rows'],
   ['J1,J2', 'SSD1306 128x64 OLED', 'Module 0.96in', 2, 'DigiKey', '1528-1738-ND', 3.95, 'Dual I2C OLED, address 0x3C and 0x3D'],
   ['D1', '8x8 LED matrix 20mm', 'THT 16pin', 1, 'LCSC', 'C9018', 1.10, 'Row anode / column cathode'],
   ['R1-R8', '330R 0603', '0603', 8, 'LCSC', 'C23136', 0.01, 'Row current limiting resistors'],
@@ -1003,15 +1035,15 @@ const BOM5 = [
   ['U2', '74HC86', 'DIP-14', 1, 'LCSC', 'C5619', 0.29, 'Quad XOR, B inversion'],
   ['U3', '74HC08', 'DIP-14', 1, 'LCSC', 'C5617', 0.27, 'Quad AND'],
   ['U4', '74HC32', 'DIP-14', 1, 'LCSC', 'C5621', 0.27, 'Quad OR'],
-  ['U5', '74HC153', 'DIP-16', 1, 'DigiKey', '1727-1317-ND', 0.62, 'Dual 4:1 mux'],
+  ['U5,U9', '74HC153', 'DIP-16', 2, 'DigiKey', '1727-1317-ND', 0.62, 'Dual 4:1 mux, two needed for the 4 bit result bus'],
   ['U6', '74HC161', 'DIP-16', 1, 'LCSC', 'C5622', 0.42, 'Synchronous 4 bit counter'],
   ['U7', '74HC14', 'DIP-14', 1, 'LCSC', 'C5620', 0.31, 'Hex Schmitt inverter, debounce'],
   ['U8', '74HC02', 'DIP-14', 1, 'LCSC', 'C5616', 0.28, 'Quad NOR, zero detect'],
   ['SW1-SW10', 'DIP switch SPST', 'THT', 10, 'LCSC', 'C318884', 0.18, 'Operand and opcode switches'],
   ['R1-R10', '10K 0603 THT', 'Axial', 10, 'LCSC', 'C25804', 0.01, 'Switch pulldowns'],
-  ['R11-R19', '1K 0603 THT', 'Axial', 9, 'LCSC', 'C22548', 0.01, 'LED series resistors'],
-  ['LED1-LED9', '3mm red LED', 'THT', 9, 'LCSC', 'C99765', 0.04, 'Result and flag indicators'],
-  ['C1-C8', '100n ceramic', 'Disc', 8, 'LCSC', 'C14663', 0.01, 'Per IC decoupling'],
+  ['R11-R20', '1K 0603 THT', 'Axial', 10, 'LCSC', 'C22548', 0.01, 'LED series resistors'],
+  ['LED1-LED10', '3mm red LED', 'THT', 10, 'LCSC', 'C99765', 0.04, 'Result, flag and counter indicators'],
+  ['C1-C9', '100n ceramic', 'Disc', 9, 'LCSC', 'C14663', 0.01, 'Per IC decoupling'],
   ['BB1,BB2', '830 point breadboard', 'Hardware', 2, 'DigiKey', '1738-1030-ND', 2.25, 'Two solderless breadboards'],
   ['JMP', 'M/M jumper wire kit', 'Hardware', 1, 'DigiKey', '1528-1950-ND', 1.95, 'Cut to length labelled jumpers']
 ];
@@ -1028,6 +1060,7 @@ function week5Netlist() {
     U3: { part: '74HC08', package: 'DIP-14', power: [7, 14] },
     U4: { part: '74HC32', package: 'DIP-14', power: [7, 14] },
     U5: { part: '74HC153', package: 'DIP-16', power: [8, 16] },
+    U9: { part: '74HC153', package: 'DIP-16', power: [8, 16] },
     U6: { part: '74HC161', package: 'DIP-16', power: [8, 16] },
     U7: { part: '74HC14', package: 'DIP-14', power: [7, 14] },
     U8: { part: '74HC02', package: 'DIP-14', power: [7, 14] }
@@ -1041,39 +1074,49 @@ function week5Netlist() {
   const nor = { 1: '1Y', 2: '1A', 3: '1B', 4: '2Y', 5: '2A', 6: '2B', 7: 'GND', 10: '3Y', 8: '3A', 9: '3B', 13: '4Y', 11: '4A', 12: '4B', 14: 'VCC' };
   for (const [p, s] of Object.entries(nor)) set('U8', p, s);
   const u5 = { 1: '1G', 2: 'S1', 3: '1C3', 4: '1C2', 5: '1C1', 6: '1C0', 7: '1Y', 8: 'GND', 9: '2Y', 10: '2C0', 11: '2C1', 12: '2C2', 13: '2C3', 14: 'S0', 15: '2G', 16: 'VCC' };
-  for (const [p, s] of Object.entries(u5)) set('U5', p, s);
+  for (const [p, s] of Object.entries(u5)) { set('U5', p, s); set('U9', p, s); }
   const u6 = { 1: 'MR', 2: 'CP', 3: 'D0', 4: 'D1', 5: 'D2', 6: 'D3', 7: 'CEP', 8: 'GND', 9: 'PE', 10: 'CET', 11: 'Q3', 12: 'Q2', 13: 'Q1', 14: 'Q0', 15: 'TC', 16: 'VCC' };
   for (const [p, s] of Object.entries(u6)) set('U6', p, s);
   const u7 = { 1: '1A', 2: '1Y', 3: '2A', 4: '2Y', 5: '3A', 6: '3Y', 7: 'GND', 9: '4A', 8: '4Y', 11: '5A', 10: '5Y', 13: '6A', 12: '6Y', 14: 'VCC' };
   for (const [p, s] of Object.entries(u7)) set('U7', p, s);
 
   const nets = [
-    { name: 'VCC', nodes: ['U1.16', 'U2.14', 'U3.14', 'U4.14', 'U5.16', 'U6.16', 'U7.14', 'U8.14'], note: '5 V rail' },
-    { name: 'GND', nodes: ['U1.8', 'U2.7', 'U3.7', 'U4.7', 'U5.8', 'U6.8', 'U7.7', 'U8.7'], note: '0 V rail' },
-    { name: 'A0', nodes: ['U1.5', 'SW_A0'], note: 'A bit 0 from DIP switch with 10K pulldown' },
-    { name: 'A1', nodes: ['U1.3', 'SW_A1'] },
-    { name: 'A2', nodes: ['U1.14', 'SW_A2'] },
-    { name: 'A3', nodes: ['U1.12', 'SW_A3'] },
-    { name: 'B0', nodes: ['U2.1', 'SW_B0'], note: 'B bit into XOR inverter stage' },
-    { name: 'B1', nodes: ['U2.4', 'SW_B1'] },
-    { name: 'B2', nodes: ['U2.9', 'SW_B2'] },
-    { name: 'B3', nodes: ['U2.12', 'SW_B3'] },
-    { name: 'SUB', nodes: ['U2.2', 'U2.5', 'U2.10', 'U2.13', 'U1.7', 'U3.11'], note: 'SUB drives all four XOR inputs and adder CIN' },
+    { name: 'VCC', nodes: ['U1.16', 'U2.14', 'U3.14', 'U4.14', 'U5.16', 'U9.16', 'U6.16', 'U7.14', 'U8.14'], note: '5 V rail' },
+    { name: 'GND', nodes: ['U1.8', 'U2.7', 'U3.7', 'U4.7', 'U5.8', 'U9.8', 'U6.8', 'U7.7', 'U8.7'], note: '0 V rail' },
+    { name: 'A0', nodes: ['U1.5', 'U3.1', 'U4.1', 'SW_A0'], note: 'A bit 0 to adder, AND gate and OR gate' },
+    { name: 'A1', nodes: ['U1.3', 'U3.4', 'U4.4', 'SW_A1'] },
+    { name: 'A2', nodes: ['U1.14', 'U3.9', 'U4.9', 'SW_A2'] },
+    { name: 'A3', nodes: ['U1.12', 'U3.12', 'U4.12', 'SW_A3'] },
+    { name: 'B0', nodes: ['U2.1', 'U3.2', 'U4.2', 'SW_B0'], note: 'B bit to XOR stage, AND gate and OR gate' },
+    { name: 'B1', nodes: ['U2.4', 'U3.5', 'U4.5', 'SW_B1'] },
+    { name: 'B2', nodes: ['U2.9', 'U3.10', 'U4.10', 'SW_B2'] },
+    { name: 'B3', nodes: ['U2.12', 'U3.13', 'U4.13', 'SW_B3'] },
+    { name: 'SUB', nodes: ['U8.1', 'U2.2', 'U2.5', 'U2.10', 'U2.13', 'U1.7'], note: 'SUB = S0 AND NOT S1 decoded by U8 gate 1, drives XOR stage and CIN' },
     { name: 'BX0', nodes: ['U2.3', 'U1.6'], note: 'B0 XOR SUB into adder B1' },
     { name: 'BX1', nodes: ['U2.6', 'U1.2'] },
     { name: 'BX2', nodes: ['U2.8', 'U1.15'] },
     { name: 'BX3', nodes: ['U2.11', 'U1.11'] },
-    { name: 'SUM0', nodes: ['U1.4', 'U5.6', 'U5.10'], note: 'Adder S1 is result bit 0, mux C0 on both halves' },
-    { name: 'SUM1', nodes: ['U1.1', 'U5.5', 'U5.11'] },
-    { name: 'SUM2', nodes: ['U1.13', 'U5.4', 'U5.12'] },
-    { name: 'SUM3', nodes: ['U1.10', 'U5.3', 'U5.13'] },
+    { name: 'SUM0', nodes: ['U1.4', 'U5.6', 'U5.5'], note: 'Sum bit 0 into mux C0 (ADD) and C1 (SUB)' },
+    { name: 'SUM1', nodes: ['U1.1', 'U5.10', 'U5.11'] },
+    { name: 'SUM2', nodes: ['U1.13', 'U9.6', 'U9.5'] },
+    { name: 'SUM3', nodes: ['U1.10', 'U9.10', 'U9.11'] },
     { name: 'CARRY', nodes: ['U1.9', 'LED_CARRY'], note: 'For SUB reads as NOT borrow' },
-    { name: 'AND0', nodes: ['U3.3', 'U5.6'], note: 'Expansion header, see BREADBOARD_GUIDE.md' },
-    { name: 'OR0', nodes: ['U4.3', 'U5.13'], note: 'OR result bit 0 into mux C3' },
-    { name: 'S0', nodes: ['U5.14', 'U7.1', 'SW_S0'], note: 'Opcode select bit 0' },
-    { name: 'S1', nodes: ['U5.2', 'U3.12', 'SW_S1'], note: 'Opcode select bit 1' },
-    { name: 'NS0', nodes: ['U7.2', 'U3.13'], note: 'Inverted S0 for SUB decode' },
-    { name: 'MUX_G', nodes: ['U5.1', 'U5.15', 'GND_BUS'], note: 'Both active low strobes tied LOW' },
+    { name: 'AND0', nodes: ['U3.3', 'U5.4'], note: 'AND bit 0 into mux C2' },
+    { name: 'AND1', nodes: ['U3.6', 'U5.12'] },
+    { name: 'AND2', nodes: ['U3.8', 'U9.4'] },
+    { name: 'AND3', nodes: ['U3.11', 'U9.12'] },
+    { name: 'OR0', nodes: ['U4.3', 'U5.3'], note: 'OR bit 0 into mux C3' },
+    { name: 'OR1', nodes: ['U4.6', 'U5.13'] },
+    { name: 'OR2', nodes: ['U4.8', 'U9.3'] },
+    { name: 'OR3', nodes: ['U4.11', 'U9.13'] },
+    { name: 'Y0', nodes: ['U5.7', 'U8.5', 'LED_Y0'], note: 'Result bus bit 0' },
+    { name: 'Y1', nodes: ['U5.9', 'U8.6', 'LED_Y1'] },
+    { name: 'Y2', nodes: ['U9.7', 'U8.8', 'LED_Y2'] },
+    { name: 'Y3', nodes: ['U9.9', 'U8.9', 'LED_Y3'], note: 'Result bus bit 3' },
+    { name: 'S0', nodes: ['U5.14', 'U9.14', 'U7.1', 'SW_S0'], note: 'Opcode select bit 0' },
+    { name: 'NS0', nodes: ['U7.2', 'U8.2'], note: 'Inverted S0 for SUB decode' },
+    { name: 'S1', nodes: ['U5.2', 'U9.2', 'U8.3', 'SW_S1'], note: 'Opcode select bit 1' },
+    { name: 'MUX_G', nodes: ['U5.1', 'U5.15', 'U9.1', 'U9.15', 'GND_BUS'], note: 'All active low strobes tied LOW' },
     { name: 'CLOCK', nodes: ['U7.3', 'SW_STEP'], note: 'RC debounced step pushbutton' },
     { name: 'CLK_BUF', nodes: ['U7.4', 'U6.2'], note: 'Schmitt buffered clock to 74HC161 CP' },
     { name: 'MR_N', nodes: ['U6.1', 'SW_RESET'], note: 'Active low master reset' },
@@ -1083,9 +1126,13 @@ function week5Netlist() {
     { name: 'Q1', nodes: ['U6.13', 'LED_Q1'] },
     { name: 'Q2', nodes: ['U6.12', 'LED_Q2'] },
     { name: 'Q3', nodes: ['U6.11', 'LED_Q3'] },
-    { name: 'ZERO', nodes: ['U8.10', 'U7.9', 'LED_ZERO'], note: 'NOR tree plus inverter, expansion header' },
-    { name: 'OVERFLOW', nodes: ['U8.13', 'LED_OVERFLOW'], note: 'Sign compare, expansion header' },
-    { name: 'SPARE_TIE', nodes: ['U7.5', 'U7.13', 'U8.11', 'U8.12', 'GND_BUS'], note: 'All unused CMOS inputs defined' }
+    { name: 'Z01', nodes: ['U8.4', 'U7.9'], note: 'NOR(Y0,Y1) intermediate for ZERO flag' },
+    { name: 'NZ01', nodes: ['U7.8', 'U8.11'] },
+    { name: 'Z23', nodes: ['U8.10', 'U7.11'], note: 'NOR(Y2,Y3) intermediate for ZERO flag' },
+    { name: 'NZ23', nodes: ['U7.10', 'U8.12'] },
+    { name: 'ZERO', nodes: ['U8.13', 'LED_ZERO'], note: 'NOR(NZ01,NZ23) = Z01 AND Z23, high when Y bus is zero' },
+    { name: 'OVERFLOW', nodes: ['J_EXP_OVF'], note: 'Not routed: carry into the MSB is internal to the 74HC283, so signed overflow needs an extra gate stage. Reserved expansion pin, see BREADBOARD_GUIDE.md' },
+    { name: 'SPARE_TIE', nodes: ['U7.5', 'U7.13', 'U6.3', 'U6.4', 'U6.5', 'U6.6', 'GND_BUS'], note: 'All unused CMOS inputs defined' }
   ];
   return {
     project: 'DiscreteALU-74HC',
@@ -1104,8 +1151,8 @@ function week5Netlist() {
     ],
     flag_equations: {
       CARRY: 'COUT of 74HC283; for SUB equals NOT borrow',
-      ZERO: 'NOR(Y0,Y1,Y2,Y3) via 74HC02 plus 74HC14 inverter',
-      OVERFLOW: '(A3 == B3) && (Y3 != A3) for ADD, (A3 != B3) && (Y3 != A3) for SUB'
+      ZERO: 'ZERO = AND(NOR(Y0,Y1), NOR(Y2,Y3)) via three 74HC02 gates and two 74HC14 inverters',
+      OVERFLOW: 'Not computed on board: carry into the MSB is internal to the 74HC283. Reserved expansion pin J_EXP_OVF'
     }
   };
 }

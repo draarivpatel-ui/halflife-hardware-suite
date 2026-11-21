@@ -13,7 +13,7 @@
 static const uint32_t SAMPLE_RATE = 22050;
 static const uint8_t DAC_PINS[8] = {2, 3, 4, 5, 6, 7, 8, 9};
 static const uint8_t ROW_PINS[3] = {10, 11, 12};
-static const uint8_t COL_PINS[4] = {13, 14, 15, 16};
+static const uint8_t COL_PINS[4] = {13, 14, 15, 26};
 static const uint8_t NUM_VOICES = 4;
 static const uint8_t NUM_KEYS = 12;
 

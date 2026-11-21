@@ -22,7 +22,6 @@
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
   font-family: var(--sans); font-size: 15px; line-height: 1.55;
@@ -47,7 +46,6 @@ code { font-family: var(--mono); font-size: .88em; color: var(--cyan); backgroun
 }
 h1 { margin: 0; font: 700 20px var(--mono); letter-spacing: 2px; }
 h1 .thin { font-weight: 400; color: var(--dim); }
-.tagline { margin: 3px 0 0; font: 11px var(--mono); color: var(--dim2); letter-spacing: .5px; }
 .head-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .badge { font: 10px var(--mono); letter-spacing: 1px; padding: 6px 10px; border: 1px solid var(--amber); color: var(--amber); border-radius: 3px; }
 .badge.ghost { border-color: var(--line2); color: var(--dim); }
@@ -71,7 +69,6 @@ h1 .thin { font-weight: 400; color: var(--dim); }
 .workbench { max-width: 1440px; margin: 0 auto; padding: 26px 28px 60px; position: relative; z-index: 1; }
 .panel[hidden] { display: none; }
 .panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap; margin-bottom: 12px; }
-.eyebrow { margin: 0 0 4px; font: 10px var(--mono); letter-spacing: 2px; color: var(--amber); }
 h2 { margin: 0; font-size: 23px; font-weight: 650; letter-spacing: -.3px; max-width: 900px; }
 h3 { margin: 22px 0 10px; font: 700 11px var(--mono); letter-spacing: 1.4px; color: var(--dim); text-transform: uppercase; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; align-content: flex-start; }
