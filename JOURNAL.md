@@ -77,6 +77,18 @@ Wrote `test.js` with 48 `node:test` cases. Browser-only modules are loaded once 
 
 Final verification: `node --test test.js` reports 48 tests, 48 passing, 0 failing.
 
+## Session 7: the Suite Audit and Physics Lab (2026-11-22)
+
+Added a sixth tab that cross-checks the five tracks against each other in the browser. The module `suite-lab.js` is a pure UMD file with no DOM, network, timers, or audio so the whole workbench stays dependency-free. What it computes, and the bugs the tests caught:
+
+* A FIPS 180-4 SHA-256 in pure JS (bitwise ops are 32-bit, so `>>> 0` casts are load-bearing) verified against the official vectors including the one-million-`a` case, then swept 0 to 160 input bytes against Node `crypto` at every byte boundary.
+* A canonical serializer with sorted keys, cycle detection, a 24-level depth bound, and a literal `__proto__` own-key path that cannot pollute prototypes. One digest-stamped proof brief is cached per state key so the on-page fingerprint, JSON, CSV, and Markdown surfaces always show the same SHA-256. Earlier work on this machine showed stamping the digest per call (a timestamp inside the payload) produces three different values for the same state; the cache kills that class of bug.
+* An R-2R tolerance model. The first version fed dimensionless scale multipliers into `ladderSolve`, which expects ohms, and reported a nonsense 29.7 LSB INL at 0% tolerance while the underlying solver was actually perfect (256-code parity with `suite.js` at under 1e-12 V). Fixed by scaling the nominal 10K arm / 20K leg resistances directly; 0% now reports exactly zero error and 1% worst-case lands near 1.27 LSB INL with monotonic growth. Lesson: always smoke-test the zero-parameter case before trusting sweep output.
+* A fail-closed `#hlab=` codec: base64url with strict modulus, bounded length, `hasOwnProperty` schema keys, numeric clamping recorded as rejections, enum whitelists, and hostile-key rejection for `__proto__`, `constructor`, and `prototype`.
+* A deterministic in-page self-test battery (25 checks, 28 once the STL files load into the lab) covering SHA-256 KATs, canonicalizer, codec round trip, INA219 calibration and power, R-2R physics, SSD1306 buffers, ALU vectors, digest parity, and tamper detection.
+
+`test.js` now requires `suite-lab.test.js`, so `node --test test.js` runs 546 tests total, including a 160-vector ALU spot grid and DOM wiring assertions for the sixth tab.
+
 ## Deployment
 
 Set the repository-local Git identity to `draarivpatel-ui <287273626+draarivpatel-ui@users.noreply.github.com>` so no personal contact details appear in commits. Created the public repository, pushed `main`, enabled GitHub Pages with a legacy build from the `main` branch root, and published release `v1.0.0`. The custom domain `aariv.me` is served by the user Pages site with an approved certificate, so the project is reachable at `https://aariv.me/halflife-hardware-suite/`.

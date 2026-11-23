@@ -51,7 +51,7 @@ h1 .thin { font-weight: 400; color: var(--dim); }
 .badge.ghost { border-color: var(--line2); color: var(--dim); }
 .head-link { font: 11px var(--mono); letter-spacing: .5px; border-bottom: 1px solid var(--line2); padding-bottom: 2px; }
 
-.tabs { max-width: 1440px; margin: 0 auto; padding: 0 28px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; position: relative; z-index: 2; }
+.tabs { max-width: 1440px; margin: 0 auto; padding: 0 28px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; position: relative; z-index: 2; }
 .tab {
   appearance: none; background: var(--panel); color: var(--dim); border: 1px solid var(--line); border-top: 0;
   padding: 12px 14px; text-align: left; cursor: pointer; font-family: var(--sans);
@@ -188,8 +188,8 @@ canvas { display: block; width: 100%; height: auto; background: #080c0e; }
 .foot-links { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
 
 @media (max-width: 980px) {
-  .split { grid-template-columns: 1fr; }
-  .tabs { grid-template-columns: repeat(5, minmax(120px, 1fr)); overflow-x: auto; }
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .tabs { grid-template-columns: repeat(6, minmax(120px, 1fr)); overflow-x: auto; }
   .tab small { display: none; }
   .tab { grid-template-columns: 1fr; }
   .tab-num { grid-row: auto; }
@@ -200,6 +200,39 @@ canvas { display: block; width: 100%; height: auto; background: #080c0e; }
   .readout-grid { grid-template-columns: 1fr; }
   .alu-grid { grid-template-columns: 1fr; }
 }
+/* Suite Audit & Physics Lab. Same instrument-panel language; every grid is
+   minmax(0, ...) and wide tables scroll inside their own wrapper so a 390 px
+   viewport keeps zero horizontal overflow. */
+.lab-scroll { overflow-x: auto; min-width: 0; }
+.lab-table { min-width: 660px; }
+.lab-table th { white-space: nowrap; }
+.lab-table td small { display: block; color: var(--dim2); font-size: 9px; }
+.lab-table td b { color: var(--amber2); font-weight: 400; }
+.lab-wk { color: var(--amber); font-weight: 700; }
+.lab-row { cursor: pointer; }
+.lab-row:hover td { background: #182126; }
+.lab-row:focus { outline: none; }
+.lab-row:focus td { background: #182126; box-shadow: inset 2px 0 0 var(--cyan); }
+.lab-row.lab-sel td { background: #1b242a; box-shadow: inset 2px 0 0 var(--amber); }
+.lab-badge { font: 9px var(--mono); letter-spacing: .6px; padding: 3px 6px; border-radius: 3px; border: 1px solid var(--line2); color: var(--dim2); white-space: nowrap; }
+.lab-badge.ok { color: var(--green); border-color: #33543a; background: #111c14; }
+.lab-badge.bad { color: var(--red); border-color: #5a2c28; background: #1c1211; }
+.lab-digest { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--line); background: #0d1316; min-width: 0; }
+.lab-digest-k { font: 700 10px var(--mono); letter-spacing: 1.4px; color: var(--amber); flex: none; }
+.lab-digest code { font-size: 11px; word-break: break-all; }
+.lab-note { padding: 10px 14px 0; margin: 0 0 14px; font-size: 12px; }
+.lab-selftest { list-style: none; padding-left: 0; max-height: 260px; overflow-y: auto; margin-top: 10px; }
+.lab-selftest li { font: 10px var(--mono); padding: 4px 0; border-bottom: 1px solid #1a2227; color: var(--dim); }
+.lab-selftest li.ok { color: var(--green); }
+.lab-selftest li.bad { color: var(--red); }
+.lab-selftest li b { color: var(--dim2); font-weight: 400; }
+.lab-charts { margin-top: 16px; }
+#labTolSvg, #labInaSvg, #labBomSvg, #labCodeProfileSvg { width: 100%; height: auto; display: block; }
+svg .hit { cursor: pointer; outline: none; }
+svg .hit:focus > circle { stroke: var(--cyan); stroke-width: 2; }
+svg .hit:focus > rect { stroke: var(--cyan); stroke-width: 1.4; }
+.panel .side-card .part-tabs { margin-top: 0; }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   * { transition: none !important; }

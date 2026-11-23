@@ -528,14 +528,15 @@ test('BREADBOARD_GUIDE.md documents all eight ICs and the pin tables', () => {
 // ---------------------------------------------------------------------------
 // 8. Browser workbench: files present, 5 tabs, zero autoplay audio.
 // ---------------------------------------------------------------------------
-test('Root workbench files exist and declare five tabs', () => {
+test('Root workbench files exist and declare six tabs', () => {
   const html = read('index.html');
-  assert.equal((html.match(/class="tab(?: active)?" role="tab"/g) || []).length, 5);
-  assert.equal((html.match(/<section class="panel/g) || []).length, 5);
-  for (const id of ['w1', 'w2', 'w3', 'w4', 'w5']) assert.ok(html.includes(`id="${id}"`), id);
+  assert.equal((html.match(/class="tab(?: active)?" role="tab"/g) || []).length, 6);
+  assert.equal((html.match(/<section class="panel/g) || []).length, 6);
+  for (const id of ['w1', 'w2', 'w3', 'w4', 'w5', 'lab']) assert.ok(html.includes(`id="${id}"`), id);
   assert.match(html, /suite_font\.js/);
   assert.match(html, /week5-logic\/alu\.js/);
   assert.match(html, /suite\.js/);
+  assert.match(html, /suite-lab\.js/);
   assert.match(html, /app\.js/);
   assert.match(html, /style\.css/);
   assert.ok(fs.existsSync(p('.nojekyll')), '.nojekyll must exist for GitHub Pages');
@@ -780,3 +781,9 @@ test('week1 board: VBUS track reaches VIN pad without touching the +3V3 pad', ()
   assert.ok(vbus.some(g => g.x1 === 14.3 && g.y1 === 30), 'VBUS must reach the VIN pad at (14.3,30)');
   assert.ok(v3.some(g => g.x0 === 12 && g.y0 === 30), '+3V3 must start at the VOUT pad');
 });
+
+// ---------------------------------------------------------------------------
+// 11. Suite Audit & Physics Lab: the lab test file registers its checks inside
+// this same process, so `node --test test.js` runs every suite at once.
+// ---------------------------------------------------------------------------
+require('./suite-lab.test.js');

@@ -37,6 +37,10 @@
   document.querySelectorAll('.tab').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.tab;
+      // Leaving the lab drops the bookmark hash so a reload stays predictable.
+      if (key !== 'lab' && location.hash.startsWith('#hlab=')) {
+        try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* file:// */ }
+      }
       document.querySelectorAll('.tab').forEach(t => {
         t.classList.toggle('active', t === btn);
         t.setAttribute('aria-selected', t === btn ? 'true' : 'false');
@@ -52,6 +56,7 @@
     if (key === 'w3') initWeek3();
     if (key === 'w4') initWeek4();
     if (key === 'w5') initWeek5();
+    if (key === 'lab') initLab();
   }
   const inited = {};
   function once(key, fn) { if (inited[key]) return; inited[key] = true; fn(); }
@@ -793,8 +798,359 @@
   }
 
   // -------------------------------------------------------------------------
+  // Lab: deterministic suite audit, tolerance physics, proof brief, self-tests.
+  // All math lives in window.SuiteLab (suite-lab.js). When that file is absent
+  // the five hardware tabs keep working untouched and the lab panel reports
+  // the module as unavailable.
+  // -------------------------------------------------------------------------
+  const Lab = window.SuiteLab || null;
+  const TOLS = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
+  const lab = { state: null, sweep: null, profile: null, rows: null, brief: null, stl: null, selfResults: null };
+
+  function labEnv() { return { S, ALU: window.DiscreteALU, FONT: window.GlyphFont, stl: lab.stl }; }
+  function labState() { if (!lab.state) lab.state = Lab.defaultState(); return lab.state; }
+  function computeSweep() { if (!lab.sweep) lab.sweep = Lab.toleranceSweep(TOLS, 3.3); return lab.sweep; }
+  function computeRows() { lab.rows = Lab.auditWeeks(labEnv()); return lab.rows; }
+  function computeBrief() { lab.brief = Lab.proofBrief(lab.rows || computeRows(), labState()); return lab.brief; }
+  function computeProfile() {
+    const st = labState();
+    if (!lab.profile || lab.profile.tol !== st.tol) {
+      const p = Lab.codeProfile(st.tol / 100, 3.3);
+      lab.profile = { tol: st.tol, name: p.name, r: p.r };
+    }
+    return lab.profile;
+  }
+
+  function syncHash() {
+    try { history.replaceState(null, '', Lab.encodeState(labState())); } catch (e) { /* file:// */ }
+    const d = Lab.decodeState(location.hash);
+    let status = d.ok
+      ? (d.rejected.length ? 'restored / ' + d.rejected.length + ' clamped' : 'round-trip clean')
+      : 'rejected: ' + (d.rejected[0] || 'input');
+    if (lab.bootRejection) { status = 'rejected: ' + lab.bootRejection + ' (defaults kept)'; lab.bootRejection = ''; }
+    $('labCodecStatus').textContent = status;
+  }
+
+  function jumpToWeek(key) {
+    labState().week = key;
+    syncHash();
+    renderComparator();
+    const btn = document.querySelector('.tab[data-tab="' + key + '"]');
+    if (btn) btn.click();
+  }
+
+  function renderComparator() {
+    const rows = computeRows();
+    const st = labState();
+    $('labTable').innerHTML = rows.map((r, i) => {
+      const badge = r.metric.pass === true ? '<span class="lab-badge ok">PASS</span>'
+        : r.metric.pass === false ? '<span class="lab-badge bad">FAIL</span>'
+        : '<span class="lab-badge pend">N/A</span>';
+      const hr = r.headroom === null ? 'n/a' : '$' + r.headroom.toFixed(2);
+      return `<tr class="lab-row${r.key === st.week ? ' lab-sel' : ''}" tabindex="0" data-week="${r.key}" aria-label="jump to ${esc(r.name)}">` +
+        `<td><span class="lab-wk">W${i + 1}</span> <strong>${esc(r.name)}</strong><small>${esc(r.desc)}</small></td>` +
+        `<td>${r.bomLabel}</td><td>${r.capLabel}</td><td>${hr}</td>` +
+        `<td>${esc(r.metric.label)} = <b>${esc(r.metric.value)}</b><small>${esc(r.metric.detail)}</small></td>` +
+        `<td>${badge}</td></tr>`;
+    }).join('');
+    $('labTable').querySelectorAll('tr').forEach(tr => {
+      tr.addEventListener('click', () => jumpToWeek(tr.dataset.week));
+      tr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpToWeek(tr.dataset.week); } });
+    });
+    const sum = Lab.bomSummary(rows);
+    $('labCmpStatus').textContent = 'BOM $' + sum.bomTotal.toFixed(2) + ' vs caps $' + sum.capTotal.toFixed(2);
+  }
+
+  function svgAxes(id, W, H, L, R, T, B, xTicks, yTicks, xFmt, yFmt, xLabel, yLabel) {
+    let h = `<rect width="${W}" height="${H}" fill="#0a1013"/>`;
+    for (const v of yTicks) {
+      h += `<line x1="${L}" y1="${v.y}" x2="${W - R}" y2="${v.y}" stroke="#1b252a"/>`;
+      h += `<text x="${L - 8}" y="${v.y + 3}" fill="#5f717a" font-size="10" font-family="monospace" text-anchor="end">${yFmt(v.v)}</text>`;
+    }
+    for (const v of xTicks) {
+      h += `<line x1="${v.x}" y1="${T}" x2="${v.x}" y2="${H - B}" stroke="#141d21"/>`;
+      h += `<text x="${v.x}" y="${H - B + 14}" fill="#5f717a" font-size="9" font-family="monospace" text-anchor="middle">${xFmt(v.v)}</text>`;
+    }
+    h += `<text x="${L - 40}" y="${T - 8}" fill="#5f717a" font-size="9" font-family="monospace">${yLabel}</text>`;
+    h += `<text x="${W - R - 66}" y="${H - 8}" fill="#5f717a" font-size="9" font-family="monospace">${xLabel}</text>`;
+    return h;
+  }
+
+  function renderTolChart() {
+    const pts = computeSweep();
+    const st = labState();
+    const W = 700, H = 320, L = 52, R = 18, T = 26, B = 40;
+    const peak = Math.max(0.2, ...pts.map(p => Math.max(p.maxInl, p.maxDnl)));
+    const yMax = Math.ceil(peak * 10) / 10 + 0.05;
+    const X = t => L + (W - L - R) * t / 5;
+    const Y = v => T + (H - T - B) * (1 - Math.min(v, yMax) / yMax);
+    let h = svgAxes(0, W, H, L, R, T, B,
+      TOLS.map(t => ({ v: t, x: X(t) })),
+      [0, 1, 2, 3, 4, 5].map(i => ({ v: yMax * i / 5, y: Y(yMax * i / 5) })),
+      t => t + '%', v => v.toFixed(2), 'tolerance', 'LSB err');
+    h += `<text x="${L + 8}" y="${T + 12}" fill="#f2a63b" font-size="10" font-family="monospace">INL worst</text>`;
+    h += `<text x="${L + 8}" y="${T + 26}" fill="#4fd1c5" font-size="10" font-family="monospace">DNL worst</text>`;
+    if (yMax >= 1) h += `<line x1="${L}" y1="${Y(1)}" x2="${W - R}" y2="${Y(1)}" stroke="#5a4a28" stroke-dasharray="4 4"/>` +
+      `<text x="${W - R - 92}" y="${Y(1) - 6}" fill="#5f717a" font-size="9" font-family="monospace">ideal step 1.0</text>`;
+    const path = k => pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.tol * 100).toFixed(1)} ${Y(p[k]).toFixed(1)}`).join(' ');
+    if (st.curve !== 'dnl') h += `<path d="${path('maxInl')}" fill="none" stroke="#f2a63b" stroke-width="2"/>`;
+    if (st.curve !== 'inl') h += `<path d="${path('maxDnl')}" fill="none" stroke="#4fd1c5" stroke-width="2"/>`;
+    for (const p of pts) {
+      const tp = p.tol * 100;
+      const sel = Math.abs(st.tol - tp) < 1e-9;
+      for (const k of ['maxInl', 'maxDnl']) {
+        if ((k === 'maxInl' && st.curve === 'dnl') || (k === 'maxDnl' && st.curve === 'inl')) continue;
+        const col = k === 'maxInl' ? '#f2a63b' : '#4fd1c5';
+        h += `<g class="hit" tabindex="0" role="button" data-tol="${tp}" aria-label="tolerance ${tp} percent, ${k} ${p[k].toFixed(3)} LSB">` +
+          `<circle cx="${X(tp)}" cy="${Y(p[k])}" r="${sel ? 5 : 3.5}" fill="${col}"${sel ? ' stroke="#e6edf0" stroke-width="1.5"' : ''}/>` +
+          `<circle cx="${X(tp)}" cy="${Y(p[k])}" r="13" fill="rgba(0,0,0,0)" pointer-events="all"/></g>`;
+      }
+    }
+    $('labTolSvg').innerHTML = h;
+    $('labTolSvg').querySelectorAll('g.hit').forEach(g => {
+      const pick = () => { labState().tol = +g.dataset.tol; renderLab(); };
+      g.addEventListener('click', pick);
+      g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+    });
+    const sp = pts.reduce((a, p) => Math.abs(p.tol * 100 - st.tol) < Math.abs(a.tol * 100 - st.tol) ? p : a, pts[0]);
+    $('labTolStatus').textContent = sp.patterns + ' patterns, worst ' + sp.worst;
+    $('labTolNote').textContent = 'At ' + fmt(st.tol, 1) + '% worst-case mismatch across ' + sp.patterns +
+      ' deterministic patterns: max INL ' + fmt(sp.maxInl, 3) + ' LSB, max DNL ' + fmt(sp.maxDnl, 3) +
+      ' LSB, min step ' + fmt(sp.minStep, 3) + ' LSB, monotonic in ' + sp.monoCount + '/' + sp.patterns + ' patterns.';
+  }
+
+  function renderProfile() {
+    const p = computeProfile();
+    const st = labState();
+    const r = p.r;
+    const W = 700, H = 170, L = 46, R = 14, T = 18, B = 28;
+    const m = Math.max(0.2, r.maxInl * 1.15);
+    const X = c => L + (W - L - R) * c / 255;
+    const Y = v => T + (H - T - B) * (1 - (v + m) / (2 * m));
+    let h = svgAxes(0, W, H, L, R, T, B,
+      [0, 64, 128, 192, 255].map(c => ({ v: c, x: X(c) })),
+      [-m, -m / 2, 0, m / 2, m].map(v => ({ v, y: Y(v) })),
+      c => String(c), v => v.toFixed(2), 'code', 'INL');
+    h += `<path d="` + r.inl.map((v, c) => `${c ? 'L' : 'M'}${X(c).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ') + `" fill="none" stroke="#f2a63b" stroke-width="1.6"/>`;
+    const cy = Y(r.inl[st.code]);
+    h += `<circle cx="${X(st.code)}" cy="${cy}" r="5" fill="#ffcd7a" stroke="#e6edf0" stroke-width="1.2"/>` +
+      `<line x1="${X(st.code)}" y1="${cy}" x2="${X(st.code)}" y2="${H - B}" stroke="#5a4a28" stroke-dasharray="3 3"/>` +
+      `<text x="${Math.min(W - 160, X(st.code) + 8)}" y="${Math.max(T + 6, cy - 8)}" fill="#ffcd7a" font-size="10" font-family="monospace">code ${st.code}: ${fmt(r.inl[st.code], 3)} LSB</text>`;
+    $('labCodeProfileSvg').innerHTML = h;
+    $('labProfileLabel').textContent = 'worst pattern ' + p.name + ' at ' + fmt(st.tol, 1) + '%';
+  }
+
+  function renderInaChart() {
+    const st = labState();
+    const sw = Lab.inaSweep({ iMax: st.imax, vbus: st.vbus, points: 65 });
+    const W = 700, H = 300, L = 52, R = 18, T = 26, B = 38;
+    const yMax = Math.max(0.4, Math.max(sw.maxBusW, sw.maxShuntW) * 1.08);
+    const X = a => L + (W - L - R) * a / sw.iMax;
+    const Y = w => T + (H - T - B) * (1 - w / yMax);
+    let h = svgAxes(0, W, H, L, R, T, B,
+      [0, 1, 2, 3, 4].map(i => ({ v: sw.iMax * i / 4, x: X(sw.iMax * i / 4) })),
+      [0, 1, 2, 3, 4, 5].map(i => ({ v: yMax * i / 5, y: Y(yMax * i / 5) })),
+      a => fmt(a, 1), w => fmt(w, 1), 'amps', 'watts');
+    h += `<text x="${L + 8}" y="${T + 12}" fill="#f2a63b" font-size="10" font-family="monospace">shunt I^2R</text>`;
+    h += `<text x="${L + 8}" y="${T + 26}" fill="#4fd1c5" font-size="10" font-family="monospace">bus power</text>`;
+    const curve = (k, col) => `<path d="` + sw.points.map((p, i) => `${i ? 'L' : 'M'}${X(p.a).toFixed(1)} ${Y(p[k]).toFixed(1)}`).join(' ') + `" fill="none" stroke="${col}" stroke-width="2"/>`;
+    h += curve('shuntW', '#f2a63b') + curve('busW', '#4fd1c5');
+    const mark = (a, label, col) => {
+      if (a > sw.iMax) return '';
+      const pw = a * a * sw.shunt, pb = a * sw.vbus;
+      return `<line x1="${X(a)}" y1="${T}" x2="${X(a)}" y2="${H - B}" stroke="${col}" stroke-dasharray="4 4"/>` +
+        `<g class="hit" tabindex="0" role="button" data-a="${a}" aria-label="${esc(label)} at ${fmt(a, 2)} amps">` +
+        `<circle cx="${X(a)}" cy="${Y(pw)}" r="5" fill="${col}"/>` +
+        `<circle cx="${X(a)}" cy="${Y(pw)}" r="14" fill="rgba(0,0,0,0)" pointer-events="all"/></g>` +
+        `<text x="${X(a) + 6}" y="${T + 12}" fill="${col}" font-size="9" font-family="monospace">${esc(label)}</text>`;
+    };
+    h += mark(sw.ratedA, '0.25W rated ' + fmt(sw.ratedA, 2) + 'A', '#7fd18a');
+    h += mark(sw.adcFs, 'ADC FS ' + fmt(sw.adcFs, 2) + 'A', '#ec6b5e');
+    $('labInaSvg').innerHTML = h;
+    $('labInaSvg').querySelectorAll('g.hit').forEach(g => {
+      const note = () => {
+        const a = +g.dataset.a;
+        $('labInaNote').textContent = 'Probe ' + fmt(a, 3) + ' A: shunt drop ' + fmt(a * sw.shunt * 1000, 1) +
+          ' mV, dissipation ' + fmt(a * a * sw.shunt, 3) + ' W, bus power ' + fmt(a * sw.vbus, 3) + ' W, ' +
+          Math.round(a * sw.shunt / 40e-6) + ' counts' + (a * sw.shunt > 0.32 ? ' (ADC saturated)' : '') + '.';
+      };
+      g.addEventListener('click', note);
+      g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); note(); } });
+    });
+    $('labInaStatus').textContent = 'FS ' + fmt(sw.adcFs, 2) + ' A / rated ' + fmt(sw.ratedA, 2) + ' A';
+    $('labInaNote').textContent = 'At ' + fmt(sw.iMax, 3) + ' A on the 0.1 ohm 1206 shunt: drop ' + fmt(sw.iMax * 0.1 * 1000, 0) +
+      ' mV, dissipation ' + fmt(sw.maxShuntW, 3) + ' W (package rated 0.25 W), bus power ' + fmt(sw.maxBusW, 2) +
+      ' W at ' + fmt(sw.vbus, 2) + ' V, LSB ' + '40 uA (' + Math.round(sw.iMax * 0.1 / 40e-6) + ' counts).';
+  }
+
+  function renderBomChart() {
+    const rows = computeRows();
+    const W = 700, H = 300, L = 48, R = 18, T = 30, B = 42;
+    const yMax = 26;
+    const colW = (W - L - R) / 5;
+    const X = i => L + i * colW;
+    const Y = v => T + (H - T - B) * (1 - v / yMax);
+    let h = svgAxes(0, W, H, L, R, T, B,
+      [],
+      [0, 5, 10, 15, 20, 25].map(v => ({ v, y: Y(v) })),
+      v => '', v => '$' + v, '', 'USD');
+    rows.forEach((r, i) => {
+      const cx = X(i), bw = colW * 0.34;
+      h += `<g class="hit" tabindex="0" role="button" data-week="${r.key}" aria-label="jump to ${esc(r.name)}">` +
+        `<rect x="${cx}" y="${T}" width="${colW}" height="${H - T - B}" fill="rgba(0,0,0,0)" pointer-events="all"/>`;
+      if (r.cap !== null)
+        h += `<rect x="${cx + colW * 0.30}" y="${Y(r.cap)}" width="${bw}" height="${H - B - Y(r.cap)}" fill="#1a2227" stroke="#39474f"/>`;
+      if (r.bom !== null) {
+        h += `<rect x="${cx + colW * 0.30}" y="${Y(r.bom)}" width="${bw}" height="${H - B - Y(r.bom)}" fill="#f2a63b" opacity="0.85"/>`;
+        h += `<text x="${cx + colW * 0.30 + bw / 2}" y="${Y(r.bom) - 6}" fill="#ffcd7a" font-size="10" font-family="monospace" text-anchor="middle">$${r.bom.toFixed(2)}</text>`;
+        h += `<text x="${cx + colW * 0.30 + bw / 2}" y="${Y(r.cap) - 6}" fill="#8b9ba4" font-size="9" font-family="monospace" text-anchor="middle">cap $${r.cap.toFixed(0)}</text>`;
+      } else {
+        h += `<text x="${cx + colW / 2}" y="${T + 34}" fill="#5f717a" font-size="10" font-family="monospace" text-anchor="middle">print</text>`;
+        h += `<text x="${cx + colW / 2}" y="${T + 48}" fill="#5f717a" font-size="10" font-family="monospace" text-anchor="middle">only</text>`;
+      }
+      h += `<text x="${cx + colW / 2}" y="${H - B + 16}" fill="#8b9ba4" font-size="10" font-family="monospace" text-anchor="middle">${r.key}</text>` +
+        `<text x="${cx + colW / 2}" y="${H - B + 30}" fill="#5f717a" font-size="8" font-family="monospace" text-anchor="middle">${esc(r.name)}</text></g>`;
+    });
+    $('labBomSvg').innerHTML = h;
+    $('labBomSvg').querySelectorAll('g.hit').forEach(g => {
+      g.addEventListener('click', () => jumpToWeek(g.dataset.week));
+      g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpToWeek(g.dataset.week); } });
+    });
+  }
+
+  function renderReadout() {
+    const st = labState();
+    const pts = computeSweep();
+    const sp = pts.reduce((a, p) => Math.abs(p.tol * 100 - st.tol) < Math.abs(a.tol * 100 - st.tol) ? p : a, pts[0]);
+    const b = computeBrief();
+    const vals = [
+      ['Tolerance', fmt(st.tol, 1) + ' %'], ['Sweep max', fmt(st.imax, 3) + ' A'],
+      ['Bus voltage', fmt(st.vbus, 3) + ' V'], ['DAC probe', st.code + ' / 255'],
+      ['Max INL', fmt(sp.maxInl, 3) + ' LSB'], ['Max DNL', fmt(sp.maxDnl, 3) + ' LSB'],
+      ['Min step', fmt(sp.minStep, 3) + ' LSB'], ['Worst pattern', sp.worst],
+      ['Week focus', st.week.toUpperCase()], ['Digest', b.sha256.slice(0, 12) + '...']
+    ];
+    $('labReadout').innerHTML = vals.map(([k, v]) =>
+      `<div class="readout"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join('');
+  }
+
+  function renderDigest() {
+    const b = computeBrief();
+    $('labDigest').textContent = b.sha256;
+    $('labDigestStatus').textContent = b.bytes + ' canonical bytes';
+  }
+
+  function download(name, text, mime) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: mime }));
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+
+  function renderLab() {
+    if (!Lab) return;
+    computeRows();
+    renderComparator(); renderTolChart(); renderProfile(); renderInaChart(); renderBomChart(); renderReadout(); renderDigest(); syncHash();
+    document.querySelectorAll('#labCurveBtns button').forEach(b => b.classList.toggle('active', b.dataset.c === labState().curve));
+  }
+
+  function initLab() {
+    if (!Lab) {
+      once('lab-missing', () => {
+        $('labCmpStatus').textContent = 'suite-lab.js unavailable';
+        $('labDigest').textContent = 'module not loaded';
+      });
+      return;
+    }
+    once('lab', () => {
+      lab.state = Lab.defaultState();
+      if (location.hash.startsWith('#hlab=')) {
+        const d = Lab.decodeState(location.hash);
+        if (d.ok) lab.state = d.state;
+        else lab.bootRejection = d.rejected.join(', ') || 'input';
+        $('labCodecStatus').textContent = d.ok ? 'restored from hash' : 'rejected: ' + lab.bootRejection;
+      }
+      const s = labState();
+      $('labTol').value = Math.round(s.tol * 10); $('labTolOut').textContent = fmt(s.tol, 1) + '%';
+      $('labImax').value = Math.round(s.imax * 1000); $('labImaxOut').textContent = fmt(s.imax, 3) + ' A';
+      $('labVbus').value = Math.round(s.vbus * 1000); $('labVbusOut').textContent = fmt(s.vbus, 3) + ' V';
+      $('labCode').value = s.code; $('labCodeOut').textContent = String(s.code);
+      const bind = (id, out, apply, show) => $(id).addEventListener('input', () => {
+        const v = +$(id).value;
+        apply(v); $(out).textContent = show(v); renderLab();
+      });
+      bind('labTol', 'labTolOut', v => labState().tol = v / 10, v => fmt(v / 10, 1) + '%');
+      bind('labImax', 'labImaxOut', v => labState().imax = v / 1000, v => fmt(v / 1000, 3) + ' A');
+      bind('labVbus', 'labVbusOut', v => labState().vbus = v / 1000, v => fmt(v / 1000, 3) + ' V');
+      bind('labCode', 'labCodeOut', v => labState().code = v, v => String(v));
+      $('labCurveBtns').innerHTML = ['inl', 'dnl', 'both'].map(c => `<button data-c="${c}">${c.toUpperCase()}</button>`).join('');
+      $('labCurveBtns').querySelectorAll('button').forEach(b =>
+        b.addEventListener('click', () => { labState().curve = b.dataset.c; renderLab(); }));
+      $('labVerify').addEventListener('click', () => {
+        const b = computeBrief();
+        $('labDigestOut').textContent = Lab.verifyBrief(b)
+          ? 'VERIFY PASS: recomputed sha256 of the canonical payload equals ' + b.sha256.slice(0, 20) + '...'
+          : 'VERIFY FAIL: digest mismatch';
+      });
+      $('labTamper').addEventListener('click', () => {
+        const b = computeBrief();
+        const t = Lab.tamperDemo(b);
+        $('labDigestOut').textContent = t.detected
+          ? 'TAMPER DETECTED: ' + t.field + ' ' + t.from + ' -> ' + t.to + ' gives sha256 ' + t.tamperedSha256.slice(0, 20) +
+            '... vs sealed ' + t.originalSha256.slice(0, 20) + '...'
+          : 'tamper not detected (unexpected)';
+      });
+      $('labExportJson').addEventListener('click', () => download('halflife-proof-brief.json', Lab.briefJSON(computeBrief()), 'application/json'));
+      $('labExportCsv').addEventListener('click', () => download('halflife-proof-brief.csv', Lab.briefCSV(computeBrief()), 'text/csv'));
+      $('labExportMd').addEventListener('click', () => download('halflife-proof-brief.md', Lab.briefMarkdown(computeBrief()), 'text/markdown'));
+      $('labShare').addEventListener('click', () => {
+        syncHash();
+        const link = location.href;
+        const done = ok => { $('labDigestOut').textContent = ok ? 'State link copied: ' + link : 'State link: ' + link; };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(() => done(true), () => done(false));
+        else done(false);
+      });
+      $('labSelfTestBtn').addEventListener('click', () => {
+        lab.selfResults = Lab.selfTest(labEnv());
+        const n = lab.selfResults.filter(r => r.pass).length;
+        $('labSelfTestCount').textContent = n + ' / ' + lab.selfResults.length + ' passed';
+        $('labSelfTestList').innerHTML = lab.selfResults.map(r =>
+          `<li class="${r.pass ? 'ok' : 'bad'}">${r.pass ? 'PASS' : 'FAIL'} ${esc(r.name)} <b>${esc(r.detail)}</b></li>`).join('');
+      });
+      $('labFiles').innerHTML = [
+        ['suite-lab.js', 'lab module (UMD)'], ['test.js', 'node --test entry'],
+        ['suite-lab.test.js', 'lab test suite'], ['suite.js', 'physics models'],
+        ['week5-logic/alu.js', 'gate evaluator']
+      ].map(([p, n]) => `<a href="${p}" target="_blank" rel="noopener">${esc(n)} &#8599;</a>`).join('');
+      loadWeek('w2').then(d => {
+        const st = {
+          base_chassis: d['week2-cad/base_chassis.stl'],
+          tilt_cradle: d['week2-cad/tilt_cradle.stl'],
+          detent_dial: d['week2-cad/detent_dial.stl']
+        };
+        lab.stl = st.base_chassis ? st : null;
+        renderComparator(); renderDigest();
+      });
+      window.__hllab = {
+        lab, state: labState, sweep: computeSweep, rows: () => lab.rows, brief: () => lab.brief,
+        selftest: () => lab.selfResults, codec: Lab, render: renderLab
+      };
+    });
+    renderLab();
+  }
+
+  // -------------------------------------------------------------------------
   // Boot: week 1 is visible, no other week fetches until its tab is clicked.
+  // A #hlab= bookmark boots straight into the lab with its state restored.
   // -------------------------------------------------------------------------
   $('footTot').textContent = 'BOM $6.90 / $12.19 / $18.56 / $12.60';
-  loadWeek('w1').then(() => readyWeek('w1'));
+  if (Lab && location.hash.startsWith('#hlab=')) {
+    const labTab = document.querySelector('.tab[data-tab="lab"]');
+    if (labTab) labTab.click(); else loadWeek('w1').then(() => readyWeek('w1'));
+  } else {
+    loadWeek('w1').then(() => readyWeek('w1'));
+  }
 })();

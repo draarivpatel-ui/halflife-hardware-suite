@@ -32,6 +32,7 @@
   <button class="tab" role="tab" aria-selected="false" data-tab="w3"><span class="tab-num">03</span><span>MUSIC</span><small>PocketChime-R2R</small></button>
   <button class="tab" role="tab" aria-selected="false" data-tab="w4"><span class="tab-num">04</span><span>DISPLAY</span><small>GlyphMatrix-128</small></button>
   <button class="tab" role="tab" aria-selected="false" data-tab="w5"><span class="tab-num">05</span><span>LOGIC</span><small>DiscreteALU-74HC</small></button>
+  <button class="tab" role="tab" aria-selected="false" data-tab="lab"><span class="tab-num">06</span><span>LAB</span><small>Suite Audit</small></button>
 </nav>
 
 <main class="workbench">
@@ -219,6 +220,65 @@
     <div class="file-strip" id="w5Files"></div>
   </section>
 
+  <!-- ===================== SUITE AUDIT & PHYSICS LAB ===================== -->
+  <section class="panel" id="lab" role="tabpanel" hidden>
+    <div class="panel-head">
+      <div><h2>Suite Audit &amp; Physics Lab  -  Cross-Track Comparator, Tolerance Sweep &amp; Proof Brief</h2></div>
+      <div class="chips"><span class="chip">SHA-256</span><span class="chip">DETERMINISTIC</span><span class="chip">#hlab=</span><span class="chip hot">SELF-TEST</span></div>
+    </div>
+    <p class="lede">Every figure on this panel is recomputed live from the same <code>suite.js</code>, <code>week5-logic/alu.js</code> and <code>suite_font.js</code> models that drive the five workbench tabs. Click a comparator row to jump into that week's interactive tab, click a chart marker to inspect the exact solved value, and export a proof brief whose fingerprint, JSON, CSV and Markdown surfaces all stamp one canonical SHA-256 digest. Lab state restores from the fail-closed <code>#hlab=</code> URL hash.</p>
+    <div class="split">
+      <div class="card viewer-card">
+        <div class="card-bar"><strong>5-WEEK CROSS-TRACK COMPARATOR</strong><span class="status" id="labCmpStatus">live suite math</span></div>
+        <div class="lab-scroll">
+          <table class="mini-table lab-table"><thead><tr><th>Week</th><th>BOM</th><th>Cap</th><th>Headroom</th><th>Verified physics metric</th><th>Check</th></tr></thead><tbody id="labTable"></tbody></table>
+        </div>
+        <div class="card-bar sub"><strong>AUDITED SUITE PROOF BRIEF</strong><span class="status" id="labDigestStatus">one canonical SHA-256</span></div>
+        <div class="lab-digest"><span class="lab-digest-k">sha256</span><code id="labDigest">computing</code></div>
+        <div class="btn-row">
+          <button class="btn primary" id="labVerify">Verify digest</button>
+          <button class="btn" id="labTamper">1-unit tamper demo</button>
+          <button class="btn" id="labExportJson">Export JSON</button>
+          <button class="btn" id="labExportCsv">Export CSV</button>
+          <button class="btn" id="labExportMd">Export Markdown</button>
+          <button class="btn" id="labShare">Copy state link</button>
+        </div>
+        <p class="verify-out" id="labDigestOut">The fingerprint, JSON, CSV and Markdown exports all stamp the identical digest of one canonical payload per state.</p>
+      </div>
+      <div class="card side-card">
+        <div class="card-bar"><strong>LAB STATE / #hlab= CODEC</strong><span class="status" id="labCodecStatus">fail-closed</span></div>
+        <div class="control-row"><label for="labTol">Resistor tolerance <output id="labTolOut">1.0%</output></label><input id="labTol" type="range" min="0" max="50" value="10" step="5"></div>
+        <div class="control-row"><label for="labImax">Sweep max current <output id="labImaxOut">3.200 A</output></label><input id="labImax" type="range" min="100" max="3200" value="3200" step="100"></div>
+        <div class="control-row"><label for="labVbus">Bus voltage <output id="labVbusOut">5.000 V</output></label><input id="labVbus" type="range" min="0" max="16000" value="5000" step="100"></div>
+        <div class="control-row"><label for="labCode">DAC code probe <output id="labCodeOut">128</output></label><input id="labCode" type="range" min="0" max="255" value="128" step="1"></div>
+        <div class="control-row"><label>Curve overlay</label><div class="part-tabs" id="labCurveBtns"></div></div>
+        <div class="readout-grid" id="labReadout"></div>
+        <h3>Deterministic self-tests</h3>
+        <p class="gate-state" id="labSelfTestNote">Runs the real models in this page, no fixtures.</p>
+        <button class="btn primary" id="labSelfTestBtn">Run self-tests</button>
+        <p class="counter-read" id="labSelfTestCount">not run yet</p>
+        <ul class="stack-list lab-selftest" id="labSelfTestList"></ul>
+      </div>
+    </div>
+    <div class="split lab-charts">
+      <div class="card viewer-card">
+        <div class="card-bar"><strong>W3 R-2R TOLERANCE &amp; INL/DNL SENSITIVITY</strong><span class="status" id="labTolStatus">solving patterns</span></div>
+        <div class="board-wrap"><svg id="labTolSvg" viewBox="0 0 700 320" role="img" aria-label="R-2R tolerance sensitivity chart"></svg></div>
+        <div class="card-bar sub"><strong>CODE PROFILE AT SELECTED TOLERANCE</strong><span class="status" id="labProfileLabel">worst pattern</span></div>
+        <div class="board-wrap"><svg id="labCodeProfileSvg" viewBox="0 0 700 170" role="img" aria-label="Per-code INL profile"></svg></div>
+        <p class="lede lab-note" id="labTolNote"></p>
+      </div>
+      <div class="card viewer-card">
+        <div class="card-bar"><strong>W1 INA219 SHUNT POWER SWEEP</strong><span class="status" id="labInaStatus">0.1 ohm 1206</span></div>
+        <div class="board-wrap"><svg id="labInaSvg" viewBox="0 0 700 300" role="img" aria-label="INA219 shunt power sweep"></svg></div>
+        <div class="card-bar sub"><strong>5-WEEK BOM VS CAP FRONTIER</strong><span class="status">click a column to jump</span></div>
+        <div class="board-wrap"><svg id="labBomSvg" viewBox="0 0 700 300" role="img" aria-label="BOM versus cap budget chart"></svg></div>
+        <p class="lede lab-note" id="labInaNote"></p>
+      </div>
+    </div>
+    <div class="file-strip" id="labFiles"></div>
+  </section>
+
 </main>
 
 <footer class="site-foot">
@@ -231,6 +291,7 @@
 <script src="suite_font.js"></script>
 <script src="week5-logic/alu.js"></script>
 <script src="suite.js"></script>
+<script src="suite-lab.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

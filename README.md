@@ -17,7 +17,7 @@ Half Life runs five weekly design tracks before five weeks of building: **PCBs**
 | 4 | Displays | `GlyphMatrix-128` dual SSD1306 OLED + 74HC595 8x8 LED badge | 88 x 54 mm, 2 layer | `$18.56` |
 | 5 | Breadboard logic | `DiscreteALU-74HC` 4-bit CMOS ALU and step counter | 9 DIP ICs | `$12.60` |
 
-All four priced BOMs sit far below the `$100.00` per-project allowance and below the tighter internal caps of `$18.00`, `$22.00`, `$24.00`, and `$16.00`. The total is under `$50.00`, leaving room for shipping, spare passives, and a second prototype round.
+All four priced BOMs sit far below the `$100.00` per-project allowance and below the tighter internal caps of `$18.00`, `$22.00`, `$24.00`, and `$16.00`. The combined priced total is `$50.25`, leaving room for shipping, spare passives, and a second prototype round.
 
 ## Quick start
 
@@ -82,19 +82,20 @@ Eight 74HCxx DIP ICs on two 830-point breadboards. A `74HC283` full adder, `74HC
 
 ## Browser workbench
 
-`index.html` is a five-tab engineering studio:
+`index.html` is a six-tab engineering studio:
 
 1. **PCB**: an SVG layer inspector that parses the checked-in `.kicad_pcb` for copper segments, pads, mounting holes, silkscreen text, and Edge.Cuts. Nine independently toggleable layers plus an INA219 register and power model.
 2. **CAD**: a Canvas turntable that parses the real ASCII STL, flat-shades it with a depth sort and fixed light vector, supports shaded and wireframe modes, and reports half-edge pairing, signed volume, connected components, and normal agreement.
 3. **Music**: the 256-code R-2R staircase alongside an ADSR / four-voice DDS oscilloscope. **No Web Audio object is created on load, on tab switch, or at any point without an explicit user click.** A muted-by-default checkbox creates a silent context; a separate Play control is required before any oscillator starts.
 4. **Displays**: two 128x64 page buffers drawn pixel by pixel with a 5x7 font, plus a live 74HC595 8x8 row scan showing the shift register contents.
 5. **Logic**: clickable operand bits, five opcodes, gate-level signal flow, flag LEDs, a pin-map browser for all nine ICs, a 74HC161 step counter, and an exhaustive 512 plus 1280 vector verifier.
+6. **Lab**: a deterministic Suite Audit & Physics Lab driven by `suite-lab.js`, a pure UMD module with no DOM, network, or timers. It hosts a five-week cross-track comparator (BOM vs cap with headroom and a verified physics metric per week, clickable rows jump into each tab), an R-2R tolerance and INL/DNL sensitivity chart re-solving the real eight-node Kirchhoff system under 46 deterministic worst-case resistor patterns, an INA219 shunt power and ADC full-scale sweep, a clickable BOM-vs-cap budget frontier, and an audited proof brief whose on-page fingerprint, JSON, CSV (formula-injection escaped), and Markdown exports all stamp one cached canonical SHA-256 digest. Lab state round-trips through a fail-closed `#hlab=` URL hash, and an in-page runner executes a 25-check deterministic self-test battery (28 checks once the STL files load) against the live models.
 
 `style.css` is a self-contained dark instrument-panel theme with responsive layouts and reduced-motion support. `.nojekyll` keeps GitHub Pages from ignoring the underscore-prefixed or data files.
 
 ## Verification
 
-`node --test test.js` runs 48 tests with hundreds of individual assertions:
+`node --test test.js` runs 546 tests with thousands of individual assertions:
 
 * KiCad 8 `(version 20240108)` PCB and `(version 20231120)` schematic headers, balanced S-expression parentheses, all nine required layers, net classes, routed copper, pads, courtyards, and four M2.5 holes per board.
 * RS-274X `G04`, `%FSLAX46Y46*%`, `%MOMM*%`, aperture definitions, and a terminating `M02*` on all 27 Gerber plots; Excellon `M48`, `FMAT,2`, tool table, `G90`, `G05`, coordinate records, and `M30` on all three drill files.
@@ -105,12 +106,13 @@ Eight 74HCxx DIP ICs on two 830-point breadboards. A `74HC283` full adder, `74HC
 * All 512 ADD/SUB operand vectors with exact carry, zero, and overflow, plus all 1280 five-opcode vectors cross-checked between the browser model and `alu.js`.
 * Byte-level scan of every file for zero em dashes, zero en dashes, zero AI self-references, backtick-wrapped dollar amounts in Markdown, and no personal contact details.
 * The autoplay guard: exactly one `AudioContext` construction site, bound only to a change handler, with gain zero until the separate Play click.
+* Lab (`suite-lab.test.js`, required by `test.js`): FIPS 180-4 SHA-256 known-answer vectors plus a 0-to-160-byte boundary sweep against Node `crypto`, canonicalizer key-order, cycle, and depth-bound tests, hostile `#hlab=` codec rejection (`__proto__`, bad roots, bad base64url, clamp violations), R-2R generalized-solver parity with the suite solver across all 256 codes, tolerance-sweep invariants, INA219 sweep bounds, comparator BOM-vs-cap and metric verdicts cross-checked against the real CSVs, formula-injection CSV escaping, single-digest parity across all four export surfaces, one-unit tamper detection, a 160-vector ALU spot grid, the 25-check deterministic self-test battery, and DOM wiring assertions for the sixth tab.
 
 ## Repository layout
 
 ```
-index.html  style.css  suite.js  app.js  suite_font.js  test.js  .nojekyll
-README.md  JOURNAL.md  LICENSE
+index.html  style.css  suite.js  suite-lab.js  app.js  suite_font.js
+test.js  suite-lab.test.js  .nojekyll  README.md  JOURNAL.md  LICENSE
 tools/
   generate_suite_artifacts.js   deterministic artifact generator
   font_data.txt                 256 glyph x 5 byte source table
