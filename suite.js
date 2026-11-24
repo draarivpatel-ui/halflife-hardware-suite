@@ -23,7 +23,7 @@
     decodeShunt(raw) { return raw * 0.00001; },
     decodeBus(raw) { return ((raw >> 3) & 0xFFFF) * 0.004; },
     power(current, busVoltage) { return current * busVoltage; },
-    maxCurrent(shunt) { return 0.32 / (8 * shunt); }
+    maxCurrent(shunt) { return 0.32 / shunt; }
   };
 
   // -------------------------------------------------------------------------

@@ -282,6 +282,12 @@ test('INA219 power is current times bus voltage', () => {
 test('INA219 ADC full scale is 3.2 A on the 0.1 ohm shunt', () => {
   assert.ok(Math.abs(Lab.INA.adcFullScale(0.1) - 3.2) < 1e-9);
 });
+test('BenchRail rail limit matches the PGA/8 full scale', () => {
+  // PGA /8 gives a +/-320 mV shunt range; the limit is 0.32 V / R_shunt.
+  // Regression: an extra /8 once reported 0.4 A instead of 3.2 A.
+  assert.ok(Math.abs(S.BENCHRAIL.maxCurrent(0.1) - 3.2) < 1e-9);
+  assert.equal(S.BENCHRAIL.maxCurrent(0.1), Lab.INA.adcFullScale(0.1));
+});
 test('INA219 rated current is sqrt(0.25 W / R)', () => {
   assert.ok(Math.abs(Lab.INA.ratedCurrent(0.1) - Math.sqrt(2.5)) < 1e-9);
 });
