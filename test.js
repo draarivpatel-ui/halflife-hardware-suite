@@ -124,6 +124,83 @@ test('Week 1 KiCad 8 schematic is balanced and has symbols, wires, labels', () =
   assert.match(s, /\(embedded_fonts no\)/);
 });
 
+function expandRefSpec(spec) {
+  const out = [];
+  for (const piece of spec.split(',')) {
+    const m = /^([A-Z]+)(\d+)-(?:[A-Z]+)?(\d+)$/.exec(piece.trim());
+    if (m) {
+      for (let n = Number(m[2]); n <= Number(m[3]); n++) out.push(m[1] + n);
+    } else out.push(piece.trim());
+  }
+  return out;
+}
+
+function valueForRef(text, ref) {
+  const escaped = ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`\\(property "Reference" "${escaped}"[\\s\\S]{0,700}?\\(property "Value" "([^"]*)"`);
+  const m = re.exec(text);
+  return m && m[1];
+}
+
+test('Week 1 BOM references and values are identical across schematic and PCB', () => {
+  const rows = parseCSV('week1-pcb/bom.csv').slice(1);
+  const sch = read('week1-pcb/benchrail_ina.kicad_sch');
+  const pcb = read('week1-pcb/benchrail_ina.kicad_pcb');
+  for (const row of rows) {
+    if (row[0] === 'PCB') continue;
+    for (const ref of expandRefSpec(row[0])) {
+      assert.equal(valueForRef(sch, ref), row[1], `${ref} schematic value must match BOM`);
+      assert.equal(valueForRef(pcb, ref), row[1], `${ref} PCB value must match BOM`);
+    }
+  }
+  assert.equal(valueForRef(pcb, 'C3'), '10u 0603 X5R', 'C3 must be the BOM bulk capacitor');
+});
+
+function gerberCopperDraws(text, boardH) {
+  const widths = new Map();
+  for (const line of text.split('\n')) {
+    const am = /^%ADD(\d+)C,([\d.]+)\*%$/.exec(line);
+    if (am) widths.set(Number(am[1]), Number(am[2]));
+  }
+  const draws = [];
+  let aperture = null, start = null;
+  for (const line of text.split('\n')) {
+    let m;
+    if ((m = /^D(\d+)\*$/.exec(line))) aperture = Number(m[1]);
+    else if ((m = /^X(-?\d+)Y(-?\d+)D02\*$/.exec(line))) {
+      start = { x: Number(m[1]) / 1e6, y: boardH - Number(m[2]) / 1e6 };
+    } else if ((m = /^X(-?\d+)Y(-?\d+)D01\*$/.exec(line)) && start) {
+      draws.push({
+        x0: start.x, y0: start.y,
+        x1: Number(m[1]) / 1e6, y1: boardH - Number(m[2]) / 1e6,
+        width: widths.get(aperture)
+      });
+      start = null;
+    }
+  }
+  return draws;
+}
+
+test('Week 1 copper Gerbers reproduce routed PCB tracks', () => {
+  const pcb = read('week1-pcb/benchrail_ina.kicad_pcb');
+  const boardH = 42;
+  const segRe = /\(segment \(start ([\d.]+) ([\d.]+)\) \(end ([\d.]+) ([\d.]+)\) \(width ([\d.]+)\) \(layer "([FB])\.Cu"\) \(net (\d+)\)/g;
+  const segments = [];
+  let m;
+  while ((m = segRe.exec(pcb))) {
+    segments.push({ x0: +m[1], y0: +m[2], x1: +m[3], y1: +m[4], width: +m[5], layer: m[6] + '.Cu' });
+  }
+  const key = o => [o.x0, o.y0, o.x1, o.y1, o.width].map(v => Number(v).toFixed(3)).join(',');
+  for (const [layer, suffix] of [['F.Cu', 'F_Cu'], ['B.Cu', 'B_Cu']]) {
+    const expected = segments.filter(seg => seg.layer === layer);
+    const actual = gerberCopperDraws(read(`week1-pcb/gerbers/benchrail_ina-${suffix}.gbr`), boardH);
+    const actualKeys = new Set(actual.map(key));
+    assert.ok(expected.length > 0, `${layer} PCB must contain routed segments`);
+    assert.equal(actual.length, expected.length, `${layer} Gerber draw count must equal PCB segment count`);
+    for (const seg of expected) assert.ok(actualKeys.has(key(seg)), `${layer} Gerber missing exact width and coordinates for ${key(seg)}`);
+  }
+});
+
 // ---------------------------------------------------------------------------
 // 2. Gerber RS-274X and Excellon drill files.
 // ---------------------------------------------------------------------------

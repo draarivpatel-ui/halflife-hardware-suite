@@ -483,6 +483,40 @@ function netClasses(extra) {
   return JSON.stringify({ board: {}, boards: [], cvpcb: {}, erc: {}, legacy: {}, libraries: { pinned_footprint_libs: [], pinned_symbol_libs: [] }, meta: { filename: 'project.kicad_pro', version: 1 }, net_settings: pro, pcbnew: { last_paths: { netlist: '' } }, schematic: {}, sheets: [], text_variables: {} }, null, 2) + '\n';
 }
 
+const BOM1 = [
+  ['U1,U2', 'INA219AIDCNR', 'SOT-23-8', 2, 'LCSC', 'C924766', 1.38, 'TI INA219, I2C current and voltage monitor'],
+  ['U3', 'AMS1117-3.3', 'SOT-223-3', 1, 'LCSC', 'C6186', 0.16, '3.3 V LDO, 1 A'],
+  ['J1', 'USB4105-GF-A', 'USB-C SMD', 1, 'DigiKey', '2073-USB4105-GF-A-ND', 0.62, 'GCT USB4105 16 pin USB 2.0 receptacle'],
+  ['R1,R2', '0R1 1% 1206', '1206', 2, 'LCSC', 'C178685', 0.09, '0.1 ohm 1% 0.25 W sense resistor'],
+  ['R3', '10K 1% 0603', '0603', 1, 'LCSC', 'C25804', 0.01, 'INA219 address select pulldown'],
+  ['R4,R5', '5K1 1% 0603', '0603', 2, 'DigiKey', '311-5.10KHRCT-ND', 0.02, 'USB-C CC1 and CC2 Rd pulldowns'],
+  ['R6,R7', '4K7 1% 0603', '0603', 2, 'LCSC', 'C23162', 0.01, 'I2C bus pullups to 3V3'],
+  ['C1,C4,C5', '100n 0603 X7R', '0603', 3, 'LCSC', 'C14663', 0.01, 'Decoupling'],
+  ['C2,C3,C6', '10u 0603 X5R', '0603', 3, 'LCSC', 'C19702', 0.03, 'Bulk decoupling'],
+  ['J2', '1x04 2.54mm header', 'THT', 1, 'LCSC', 'C124378', 0.11, 'I2C and rail sense breakout'],
+  ['H1-H4', 'M2.5 nylon screw set', 'Hardware', 4, 'DigiKey', '36-9552-ND', 0.12, 'M2.5 x 6 mm nylon screws and nuts'],
+  ['PCB', 'BenchRail-INA 2L 62x42mm', 'FR4', 1, 'JLCPCB', 'PCB-2L-62x42', 2.40, '2 layer 1.6 mm ENIG, 5 pcs split cost']
+];
+
+
+function expandBomRefs(spec) {
+  const out = [];
+  for (const piece of spec.split(',')) {
+    const m = /^([A-Z]+)(\d+)-(?:[A-Z]+)?(\d+)$/.exec(piece.trim());
+    if (m) {
+      for (let n = Number(m[2]); n <= Number(m[3]); n++) out.push(m[1] + n);
+    } else out.push(piece.trim());
+  }
+  return out;
+}
+
+function bomValue(ref) {
+  for (const row of BOM1) {
+    if (expandBomRefs(row[0]).includes(ref)) return row[1];
+  }
+  throw new Error(`No week 1 BOM row for ${ref}`);
+}
+
 // ---------------------------------------------------------------------------
 // Week 1: BenchRail-INA board, schematic and Gerber/Excellon output.
 // ---------------------------------------------------------------------------
@@ -490,6 +524,18 @@ function week1() {
   const W = 62, H = 42;
   const nets = ['GND', 'VBUS', '+3V3', 'SDA', 'SCL', 'IN+', 'IN-', 'VRAIL+', 'VRAIL-', 'SHUNT_HI', 'SHUNT_LO', 'ADDR0', 'CC1', 'CC2', 'D+', 'D-'];
   const N = name => [nets.indexOf(name) + 1, name];
+  const fab = { pads: [], drills: [], tracks: [], vias: [] };
+  const captureSmdPad = (owner, num, x, y, w, h) => {
+    fab.pads.push({ owner, num, x, y, shape: 'rect', w, h, copper: ['F.Cu'], paste: ['F.Paste'], mask: ['F.Mask'] });
+  };
+  const captureThruPad = (owner, num, x, y, dia, drill) => {
+    fab.pads.push({ owner, num, x, y, shape: 'circle', d: dia, copper: ['F.Cu', 'B.Cu'], paste: [], mask: ['F.Mask', 'B.Mask'] });
+    fab.drills.push({ x, y, d: drill });
+  };
+  const captureTrack = (x0, y0, x1, y1, net, layer, width) => {
+    fab.tracks.push({ x0, y0, x1, y1, net, layer, width });
+    return segment(x0, y0, x1, y1, net, layer, width);
+  };
   let b = boardHeader('BenchRail-INA USB-C Dual-Rail Precision Monitor', W, H, nets);
   b += boardEdge(W, H);
   b += silkText(31, 4.2, 'BENCHRAIL-INA  /  DUAL RAIL INA219', 'F.SilkS', 1.1);
@@ -498,17 +544,17 @@ function week1() {
 
   // U1 INA219AIDCNR SOT-23-8, two sense channels via U1/U1B.
   const ics = [
-    { ref: 'U1', val: 'INA219AIDCNR', lib: 'Package_TO_SOT_SMD:SOT-23-8', x: 24, y: 16, w: 3.0, h: 3.0, pins: [
+    { ref: 'U1', val: bomValue('U1'), lib: 'Package_TO_SOT_SMD:SOT-23-8', x: 24, y: 16, w: 3.0, h: 3.0, pins: [
       ['1', -1.0, -1.0, N('SHUNT_HI')], ['2', -1.0, 0, N('GND')], ['3', -1.0, 1.0, N('SCL')],
       ['4', 0, 1.0, N('SDA')], ['5', 1.0, 1.0, N('+3V3')], ['6', 1.0, 0, N('ADDR0')],
       ['7', 1.0, -1.0, N('SHUNT_LO')], ['8', 0, -1.0, N('GND')]] },
-    { ref: 'U2', val: 'INA219AIDCNR', lib: 'Package_TO_SOT_SMD:SOT-23-8', x: 38, y: 16, w: 3.0, h: 3.0, pins: [
+    { ref: 'U2', val: bomValue('U2'), lib: 'Package_TO_SOT_SMD:SOT-23-8', x: 38, y: 16, w: 3.0, h: 3.0, pins: [
       ['1', -1.0, -1.0, N('VRAIL-')], ['2', -1.0, 0, N('GND')], ['3', -1.0, 1.0, N('SCL')],
       ['4', 0, 1.0, N('SDA')], ['5', 1.0, 1.0, N('+3V3')], ['6', 1.0, 0, N('VBUS')],
       ['7', 1.0, -1.0, N('VRAIL+')], ['8', 0, -1.0, N('GND')]] },
-    { ref: 'U3', val: 'AMS1117-3.3', lib: 'Package_TO_SOT_SMD:SOT-223-3_TabPin2', x: 12, y: 30, w: 6.6, h: 6.0, pins: [
+    { ref: 'U3', val: bomValue('U3'), lib: 'Package_TO_SOT_SMD:SOT-223-3_TabPin2', x: 12, y: 30, w: 6.6, h: 6.0, pins: [
       ['1', -2.3, 0, N('GND')], ['2', 0, 0, N('+3V3')], ['3', 2.3, 0, N('VBUS')]] },
-    { ref: 'J1', val: 'USB4105-GF-A', lib: 'Connector_USB:USB_C_Receptacle_GCT_USB4105', x: 6, y: 12, w: 9.0, h: 7.4, pins: [
+    { ref: 'J1', val: bomValue('J1'), lib: 'Connector_USB:USB_C_Receptacle_GCT_USB4105', x: 6, y: 12, w: 9.0, h: 7.4, pins: [
       ['A1', -3.2, -2.6, N('GND')], ['A4', -3.2, -0.9, N('VBUS')], ['A5', -3.2, 0.9, N('CC1')],
       ['A6', -3.2, 2.6, N('D+')], ['A7', -1.0, 2.6, N('D-')], ['B1', 1.0, -2.6, N('GND')],
       ['B4', 3.2, -0.9, N('VBUS')], ['B5', 3.2, 0.9, N('CC2')], ['B6', 3.2, 2.6, N('D+')],
@@ -516,47 +562,55 @@ function week1() {
   ];
   for (const ic of ics) {
     b += fpBox(ic.ref, ic.val, ic.lib, ic.x, ic.y, ic.w, ic.h);
-    for (const [num, dx, dy, net] of ic.pins) b += smdPad(num, dx, dy, 0.9, 0.55, net);
+    for (const [num, dx, dy, net] of ic.pins) {
+      captureSmdPad(ic.ref, num, ic.x + dx, ic.y + dy, 0.9, 0.55);
+      b += smdPad(num, dx, dy, 0.9, 0.55, net);
+    }
     b += '\t)\n';
   }
 
   // Sense resistors, passives, address resistors, CC pull downs, test points.
   const parts = [
-    { ref: 'R1', val: '0R1 1% 1206', lib: 'Resistor_SMD:R_1206_3216Metric', x: 18, y: 22, w: 3.2, h: 1.6, pins: [['1', -1.4, 0, N('SHUNT_HI')], ['2', 1.4, 0, N('SHUNT_LO')]] },
-    { ref: 'R2', val: '0R1 1% 1206', lib: 'Resistor_SMD:R_1206_3216Metric', x: 18, y: 26, w: 3.2, h: 1.6, pins: [['1', -1.4, 0, N('VRAIL+')], ['2', 1.4, 0, N('VRAIL-')]] },
-    { ref: 'R3', val: '10K 1% 0603', lib: 'Resistor_SMD:R_0603_1608Metric', x: 44, y: 10, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('ADDR0')], ['2', 0.7, 0, N('GND')]] },
-    { ref: 'R4', val: '5K1 1% 0603', lib: 'Resistor_SMD:R_0603_1608Metric', x: 8, y: 20, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('CC1')], ['2', 0.7, 0, N('GND')]] },
-    { ref: 'R5', val: '5K1 1% 0603', lib: 'Resistor_SMD:R_0603_1608Metric', x: 10.5, y: 20, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('CC2')], ['2', 0.7, 0, N('GND')]] },
-    { ref: 'R6', val: '4K7 1% 0603', lib: 'Resistor_SMD:R_0603_1608Metric', x: 48, y: 22, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('SDA')], ['2', 0.7, 0, N('+3V3')]] },
-    { ref: 'R7', val: '4K7 1% 0603', lib: 'Resistor_SMD:R_0603_1608Metric', x: 48, y: 24, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('SCL')], ['2', 0.7, 0, N('+3V3')]] },
-    { ref: 'C1', val: '100n 0603', lib: 'Capacitor_SMD:C_0603_1608Metric', x: 17, y: 30, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('+3V3')], ['2', 0.7, 0, N('GND')]] },
-    { ref: 'C2', val: '10u 0603', lib: 'Capacitor_SMD:C_0603_1608Metric', x: 20, y: 30, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('VBUS')], ['2', 0.7, 0, N('GND')]] },
-    { ref: 'C3', val: '100n 0603', lib: 'Capacitor_SMD:C_0603_1608Metric', x: 23, y: 30, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('VBUS')], ['2', 0.7, 0, N('GND')]] },
-    { ref: 'C4', val: '100n 0603', lib: 'Capacitor_SMD:C_0603_1608Metric', x: 28, y: 12, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('+3V3')], ['2', 0.7, 0, N('GND')]] },
-    { ref: 'C5', val: '100n 0603', lib: 'Capacitor_SMD:C_0603_1608Metric', x: 34, y: 12, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('+3V3')], ['2', 0.7, 0, N('GND')]] },
-    { ref: 'C6', val: '10u 0603', lib: 'Capacitor_SMD:C_0603_1608Metric', x: 8, y: 34, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('+3V3')], ['2', 0.7, 0, N('GND')]] }
+    { ref: 'R1', val: bomValue('R1'), lib: 'Resistor_SMD:R_1206_3216Metric', x: 18, y: 22, w: 3.2, h: 1.6, pins: [['1', -1.4, 0, N('SHUNT_HI')], ['2', 1.4, 0, N('SHUNT_LO')]] },
+    { ref: 'R2', val: bomValue('R2'), lib: 'Resistor_SMD:R_1206_3216Metric', x: 18, y: 26, w: 3.2, h: 1.6, pins: [['1', -1.4, 0, N('VRAIL+')], ['2', 1.4, 0, N('VRAIL-')]] },
+    { ref: 'R3', val: bomValue('R3'), lib: 'Resistor_SMD:R_0603_1608Metric', x: 44, y: 10, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('ADDR0')], ['2', 0.7, 0, N('GND')]] },
+    { ref: 'R4', val: bomValue('R4'), lib: 'Resistor_SMD:R_0603_1608Metric', x: 8, y: 20, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('CC1')], ['2', 0.7, 0, N('GND')]] },
+    { ref: 'R5', val: bomValue('R5'), lib: 'Resistor_SMD:R_0603_1608Metric', x: 10.5, y: 20, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('CC2')], ['2', 0.7, 0, N('GND')]] },
+    { ref: 'R6', val: bomValue('R6'), lib: 'Resistor_SMD:R_0603_1608Metric', x: 48, y: 22, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('SDA')], ['2', 0.7, 0, N('+3V3')]] },
+    { ref: 'R7', val: bomValue('R7'), lib: 'Resistor_SMD:R_0603_1608Metric', x: 48, y: 24, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('SCL')], ['2', 0.7, 0, N('+3V3')]] },
+    { ref: 'C1', val: bomValue('C1'), lib: 'Capacitor_SMD:C_0603_1608Metric', x: 17, y: 30, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('+3V3')], ['2', 0.7, 0, N('GND')]] },
+    { ref: 'C2', val: bomValue('C2'), lib: 'Capacitor_SMD:C_0603_1608Metric', x: 20, y: 30, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('VBUS')], ['2', 0.7, 0, N('GND')]] },
+    { ref: 'C3', val: bomValue('C3'), lib: 'Capacitor_SMD:C_0603_1608Metric', x: 23, y: 30, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('VBUS')], ['2', 0.7, 0, N('GND')]] },
+    { ref: 'C4', val: bomValue('C4'), lib: 'Capacitor_SMD:C_0603_1608Metric', x: 28, y: 12, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('+3V3')], ['2', 0.7, 0, N('GND')]] },
+    { ref: 'C5', val: bomValue('C5'), lib: 'Capacitor_SMD:C_0603_1608Metric', x: 34, y: 12, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('+3V3')], ['2', 0.7, 0, N('GND')]] },
+    { ref: 'C6', val: bomValue('C6'), lib: 'Capacitor_SMD:C_0603_1608Metric', x: 8, y: 34, w: 1.6, h: 0.8, pins: [['1', -0.7, 0, N('+3V3')], ['2', 0.7, 0, N('GND')]] }
   ];
   for (const p of parts) {
     b += fpBox(p.ref, p.val, p.lib, p.x, p.y, p.w, p.h);
-    for (const [num, dx, dy, net] of p.pins) b += smdPad(num, dx, dy, 0.8, 0.9, net);
+    for (const [num, dx, dy, net] of p.pins) {
+      captureSmdPad(p.ref, num, p.x + dx, p.y + dy, 0.8, 0.9);
+      b += smdPad(num, dx, dy, 0.8, 0.9, net);
+    }
     b += '\t)\n';
   }
 
   // 1x4 header for I2C and rail sense taps, plus four M2.5 mounting holes.
   b += `\t(footprint "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical"\n\t\t(layer "F.Cu")\n\t\t(uuid "${uid()}")\n\t\t(at 54 21)\n\t\t(descr "I2C and rail sense header")\n`;
   b += `\t\t(property "Reference" "J2" (at 0 -4 0) (layer "F.SilkS") (uuid "${uid()}") (effects (font (size 0.9 0.9) (thickness 0.12))))\n`;
-  b += `\t\t(property "Value" "Conn_01x04" (at 0 4 0) (layer "F.Fab") (uuid "${uid()}") (effects (font (size 0.8 0.8)) (hide yes)))\n`;
+  b += `\t\t(property "Value" "${bomValue('J2')}" (at 0 4 0) (layer "F.Fab") (uuid "${uid()}") (effects (font (size 0.8 0.8)) (hide yes)))\n`;
   b += `\t\t(fp_rect (start -1.6 -5.5) (end 1.6 5.5) (stroke (width 0.05) (type default)) (fill no) (layer "F.CrtYd") (uuid "${uid()}"))\n`;
   b += `\t\t(fp_rect (start -1.6 -5.5) (end 1.6 5.5) (stroke (width 0.05) (type default)) (fill no) (layer "B.CrtYd") (uuid "${uid()}"))\n`;
   [N('+3V3'), N('SDA'), N('SCL'), N('GND')].forEach((n, i) => {
+    captureThruPad('J2', String(i + 1), 54, 21 - 3.81 + i * 2.54, 1.7, 1.0);
     b += thPad(String(i + 1), 0, -3.81 + i * 2.54, 1.0, 1.7, n);
   });
   b += '\t)\n';
   for (const [i, [x, y]] of [[3.5, 3.5], [W - 3.5, 3.5], [3.5, H - 3.5], [W - 3.5, H - 3.5]].entries()) {
+    fab.drills.push({ x, y, d: 2.7 });
     b += `\t(footprint "MountingHole:MountingHole_2.7mm_M2.5"\n\t\t(layer "F.Cu")\n\t\t(uuid "${uid()}")\n\t\t(at ${f(x, 2)} ${f(y, 2)})\n`;
     b += `\t\t(descr "M2.5 mounting hole, non-plated, 2.7 mm drill")\n`;
     b += `\t\t(property "Reference" "H${i + 1}" (at 0 -3.2 0) (layer "F.SilkS") (uuid "${uid()}") (effects (font (size 0.9 0.9) (thickness 0.12))))\n`;
-    b += `\t\t(property "Value" "MountingHole_2.7mm_M2.5" (at 0 3.2 0) (layer "F.Fab") (uuid "${uid()}") (effects (font (size 0.8 0.8)) (hide yes)))\n`;
+    b += `\t\t(property "Value" "${bomValue('H' + (i + 1))}" (at 0 3.2 0) (layer "F.Fab") (uuid "${uid()}") (effects (font (size 0.8 0.8)) (hide yes)))\n`;
     b += `\t\t(fp_circle (center 0 0) (end 2.1 0) (stroke (width 0.1) (type default)) (fill no) (layer "F.CrtYd") (uuid "${uid()}"))\n`;
     b += `\t\t(fp_circle (center 0 0) (end 2.1 0) (stroke (width 0.1) (type default)) (fill no) (layer "B.CrtYd") (uuid "${uid()}"))\n`;
     b += npth(0, 0, 2.7, 2.7);
@@ -567,23 +621,27 @@ function week1() {
   const g = N('GND')[0], v = N('VBUS')[0], v3 = N('+3V3')[0], sda = N('SDA')[0], scl = N('SCL')[0];
   for (let i = 0; i < 8; i++) {
     const y = 8 + i * 3.6;
-    b += segment(9, y, 27, y, v3, 'F.Cu', 0.25);
-    b += segment(9, y + 1.2, 27, y + 1.2, g, 'B.Cu', 0.25);
+    b += captureTrack(9, y, 27, y, v3, 'F.Cu', 0.25);
+    b += captureTrack(9, y + 1.2, 27, y + 1.2, g, 'B.Cu', 0.25);
   }
-  b += segment(6, 12, 12, 12, v, 'F.Cu', 0.6);
-  b += segment(12, 12, 12, 28, v, 'F.Cu', 0.6);
-  b += segment(12, 28, 14.3, 28, v, 'F.Cu', 0.6);
-  b += segment(14.3, 28, 14.3, 30, v, 'F.Cu', 0.6);
-  b += segment(12, 30, 12, 32, v3, 'F.Cu', 0.6);
-  b += segment(12, 32, 24, 32, v3, 'F.Cu', 0.6);
-  b += segment(16.3, 30, 16.3, 32, v3, 'F.Cu', 0.6);
-  b += segment(24, 32, 24, 16, v3, 'F.Cu', 0.6);
-  b += segment(24, 16, 38, 16, sda, 'F.Cu', 0.2);
-  b += segment(24, 17.2, 38, 17.2, scl, 'F.Cu', 0.2);
-  b += segment(18, 22, 24, 22, N('SHUNT_HI')[0], 'F.Cu', 0.3);
-  b += segment(18, 26, 38, 26, N('VRAIL+')[0], 'F.Cu', 0.3);
-  b += segment(38, 26, 38, 16, N('VRAIL+')[0], 'F.Cu', 0.3);
-  for (const [x, y] of [[20, 20], [30, 20], [40, 20], [20, 28], [30, 28], [40, 28]]) b += via(x, y, g, 0.8, 0.4);
+  b += captureTrack(6, 12, 12, 12, v, 'F.Cu', 0.6);
+  b += captureTrack(12, 12, 12, 28, v, 'F.Cu', 0.6);
+  b += captureTrack(12, 28, 14.3, 28, v, 'F.Cu', 0.6);
+  b += captureTrack(14.3, 28, 14.3, 30, v, 'F.Cu', 0.6);
+  b += captureTrack(12, 30, 12, 32, v3, 'F.Cu', 0.6);
+  b += captureTrack(12, 32, 24, 32, v3, 'F.Cu', 0.6);
+  b += captureTrack(16.3, 30, 16.3, 32, v3, 'F.Cu', 0.6);
+  b += captureTrack(24, 32, 24, 16, v3, 'F.Cu', 0.6);
+  b += captureTrack(24, 16, 38, 16, sda, 'F.Cu', 0.2);
+  b += captureTrack(24, 17.2, 38, 17.2, scl, 'F.Cu', 0.2);
+  b += captureTrack(18, 22, 24, 22, N('SHUNT_HI')[0], 'F.Cu', 0.3);
+  b += captureTrack(18, 26, 38, 26, N('VRAIL+')[0], 'F.Cu', 0.3);
+  b += captureTrack(38, 26, 38, 16, N('VRAIL+')[0], 'F.Cu', 0.3);
+  for (const [x, y] of [[20, 20], [30, 20], [40, 20], [20, 28], [30, 28], [40, 28]]) {
+    fab.vias.push({ x, y, size: 0.8, drill: 0.4 });
+    fab.drills.push({ x, y, d: 0.4 });
+    b += via(x, y, g, 0.8, 0.4);
+  }
   b += groundZone(g, W, H);
   b += '\n)\n';
   write('week1-pcb/benchrail_ina.kicad_pcb', b);
@@ -602,6 +660,7 @@ function week1() {
     ['power:+3V3', '#PWR', [['1', 'power_in']]],
     ['power:+5V', '#PWR', [['1', 'power_in']]],
     ['Connector:Conn_01x04', 'J', [['1', 'passive'], ['2', 'passive'], ['3', 'passive'], ['4', 'passive']]],
+    ['Mechanical:MountingHole', 'H', []],
     ['Connector_USB:USB_C_Receptacle_USB2.0', 'J', [['A1', 'power_in'], ['A4', 'power_in'], ['A5', 'passive'], ['A6', 'bidirectional'], ['A7', 'bidirectional'], ['A9', 'power_in'], ['B4', 'power_in'], ['B5', 'passive']]],
     ['Regulator_Linear:AMS1117-3.3', 'U', [['1', 'power_in'], ['2', 'power_out'], ['3', 'power_in']]],
     ['Sensor_Current:INA219', 'U', [['1', 'power_in', 'IN+'], ['2', 'power_in', 'GND'], ['3', 'input', 'SCL'], ['4', 'bidirectional', 'SDA'], ['5', 'bidirectional', 'VS'], ['6', 'input', 'A0'], ['7', 'input', 'IN-'], ['8', 'power_in', 'GND2']]]
@@ -628,36 +687,54 @@ function week1() {
   // carries the same connectivity as the PCB. Each has an instances block
   // referencing the root sheet.
   const placed = [
-    ['J1', 'USB4105-GF-A', 'Connector_USB:USB_C_Receptacle_USB2.0', 30, 30, 'Connector_USB:USB_C_Receptacle_GCT_USB4105', ['GND', 'VBUS', 'CC1', 'D+', 'D-', 'VBUS', 'VBUS', 'CC2']],
-    ['U3', 'AMS1117-3.3', 'Regulator_Linear:AMS1117-3.3', 70, 30, 'Package_TO_SOT_SMD:SOT-223-3_TabPin2', ['GND', '+3V3', 'VBUS']],
-    ['U1', 'INA219AIDCNR', 'Sensor_Current:INA219', 120, 30, 'Package_TO_SOT_SMD:SOT-23-8', ['SHUNT_HI', 'GND', 'SCL', 'SDA', '+3V3', 'ADDR0', 'SHUNT_LO', 'GND']],
-    ['U2', 'INA219AIDCNR', 'Sensor_Current:INA219', 170, 30, 'Package_TO_SOT_SMD:SOT-23-8', ['VRAIL-', 'GND', 'SCL', 'SDA', '+3V3', 'VBUS', 'VRAIL+', 'GND']],
-    ['R1', '0R1 1% 1206', 'Device:R', 105, 55, 'Resistor_SMD:R_1206_3216Metric', ['SHUNT_HI', 'SHUNT_LO']],
-    ['R2', '0R1 1% 1206', 'Device:R', 155, 55, 'Resistor_SMD:R_1206_3216Metric', ['VRAIL+', 'VRAIL-']],
-    ['C1', '100n', 'Device:C', 85, 55, 'Capacitor_SMD:C_0603_1608Metric', ['+3V3', 'GND']],
-    ['C2', '10u', 'Device:C', 90, 55, 'Capacitor_SMD:C_0603_1608Metric', ['VBUS', 'GND']],
-    ['J2', 'Conn_01x04', 'Connector:Conn_01x04', 200, 30, 'Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical', ['+3V3', 'SDA', 'SCL', 'GND']],
+    ['J1', bomValue('J1'), 'Connector_USB:USB_C_Receptacle_USB2.0', 30, 30, 'Connector_USB:USB_C_Receptacle_GCT_USB4105', ['GND', 'VBUS', 'CC1', 'D+', 'D-', 'VBUS', 'VBUS', 'CC2']],
+    ['U3', bomValue('U3'), 'Regulator_Linear:AMS1117-3.3', 70, 30, 'Package_TO_SOT_SMD:SOT-223-3_TabPin2', ['GND', '+3V3', 'VBUS']],
+    ['U1', bomValue('U1'), 'Sensor_Current:INA219', 120, 30, 'Package_TO_SOT_SMD:SOT-23-8', ['SHUNT_HI', 'GND', 'SCL', 'SDA', '+3V3', 'ADDR0', 'SHUNT_LO', 'GND']],
+    ['U2', bomValue('U2'), 'Sensor_Current:INA219', 170, 30, 'Package_TO_SOT_SMD:SOT-23-8', ['VRAIL-', 'GND', 'SCL', 'SDA', '+3V3', 'VBUS', 'VRAIL+', 'GND']],
+    ['R1', bomValue('R1'), 'Device:R', 105, 55, 'Resistor_SMD:R_1206_3216Metric', ['SHUNT_HI', 'SHUNT_LO']],
+    ['R2', bomValue('R2'), 'Device:R', 155, 55, 'Resistor_SMD:R_1206_3216Metric', ['VRAIL+', 'VRAIL-']],
+    ['R3', bomValue('R3'), 'Device:R', 105, 75, 'Resistor_SMD:R_0603_1608Metric', ['ADDR0', 'GND']],
+    ['R4', bomValue('R4'), 'Device:R', 30, 55, 'Resistor_SMD:R_0603_1608Metric', ['CC1', 'GND']],
+    ['R5', bomValue('R5'), 'Device:R', 45, 55, 'Resistor_SMD:R_0603_1608Metric', ['CC2', 'GND']],
+    ['R6', bomValue('R6'), 'Device:R', 185, 55, 'Resistor_SMD:R_0603_1608Metric', ['SDA', '+3V3']],
+    ['R7', bomValue('R7'), 'Device:R', 185, 75, 'Resistor_SMD:R_0603_1608Metric', ['SCL', '+3V3']],
+    ['C1', bomValue('C1'), 'Device:C', 75, 55, 'Capacitor_SMD:C_0603_1608Metric', ['+3V3', 'GND']],
+    ['C2', bomValue('C2'), 'Device:C', 85, 55, 'Capacitor_SMD:C_0603_1608Metric', ['VBUS', 'GND']],
+    ['C3', bomValue('C3'), 'Device:C', 95, 55, 'Capacitor_SMD:C_0603_1608Metric', ['VBUS', 'GND']],
+    ['C4', bomValue('C4'), 'Device:C', 120, 55, 'Capacitor_SMD:C_0603_1608Metric', ['+3V3', 'GND']],
+    ['C5', bomValue('C5'), 'Device:C', 170, 55, 'Capacitor_SMD:C_0603_1608Metric', ['+3V3', 'GND']],
+    ['C6', bomValue('C6'), 'Device:C', 75, 75, 'Capacitor_SMD:C_0603_1608Metric', ['+3V3', 'GND']],
+    ['J2', bomValue('J2'), 'Connector:Conn_01x04', 200, 30, 'Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical', ['+3V3', 'SDA', 'SCL', 'GND']],
+    ['H1', bomValue('H1'), 'Mechanical:MountingHole', 20, 90, 'MountingHole:MountingHole_2.7mm_M2.5'],
+    ['H2', bomValue('H2'), 'Mechanical:MountingHole', 35, 90, 'MountingHole:MountingHole_2.7mm_M2.5'],
+    ['H3', bomValue('H3'), 'Mechanical:MountingHole', 50, 90, 'MountingHole:MountingHole_2.7mm_M2.5'],
+    ['H4', bomValue('H4'), 'Mechanical:MountingHole', 65, 90, 'MountingHole:MountingHole_2.7mm_M2.5'],
     ['#PWR01', 'GND', 'power:GND', 70, 70, ''],
     ['#PWR02', '+3V3', 'power:+3V3', 90, 20, ''],
     ['#PWR03', '+5V', 'power:+5V', 50, 20, '']
   ];
   const rootUuid = 'a1b2c3d4-0000-4000-8000-000000000001';
+  const addedSchematicRefs = new Set(['R3', 'R4', 'R5', 'R6', 'R7', 'C3', 'C4', 'C5', 'C6', 'H1', 'H2', 'H3', 'H4']);
+  let addedSchematicUidN = 0;
+  const addedSchematicUid = () => `511f0000-0000-4000-8000-${String(++addedSchematicUidN).padStart(12, '0')}`;
   for (const [ref, val, lib, x, y, fp, pinNets] of placed) {
-    s += `\t(symbol (lib_id "${lib}") (at ${f(x, 2)} ${f(y, 2)} 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "${uid()}")\n`;
+    const nextUid = addedSchematicRefs.has(ref) ? addedSchematicUid : uid;
+    s += `\t(symbol (lib_id "${lib}") (at ${f(x, 2)} ${f(y, 2)} 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "${nextUid()}")\n`;
     s += `\t\t(property "Reference" "${ref}" (at ${f(x + 3, 2)} ${f(y - 2, 2)} 0) (effects (font (size 1.27 1.27))))\n`;
     s += `\t\t(property "Value" "${val}" (at ${f(x + 3, 2)} ${f(y + 2, 2)} 0) (effects (font (size 1.27 1.27))))\n`;
     s += `\t\t(property "Footprint" "${fp}" (at ${f(x, 2)} ${f(y, 2)} 0) (effects (font (size 1.27 1.27)) (hide yes)))\n`;
-    for (const pn of libPins[lib] || ['1']) s += `\t\t(pin "${pn}" (uuid "${uid()}"))\n`;
+    for (const pn of libPins[lib] || ['1']) s += `\t\t(pin "${pn}" (uuid "${nextUid()}"))\n`;
     s += `\t\t(instances (project "benchrail_ina" (path "/${rootUuid}" (reference "${ref}") (unit 1))))\n\t)\n`;
     // Labeled stub wire on every pin so ERC nets resolve to the PCB nets.
     (pinNets || []).forEach((net, i) => {
       const py = y + 5.08 - i * 2.54;
-      s += `\t(wire (pts (xy ${f(x - 7.62, 2)} ${f(py, 2)}) (xy ${f(x - 12.7, 2)} ${f(py, 2)})) (stroke (width 0) (type default)) (uuid "${uid()}"))\n`;
-      s += `\t(label "${net}" (at ${f(x - 12.7, 2)} ${f(py - 1.27, 2)} 0) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "${uid()}"))\n`;
+      s += `\t(wire (pts (xy ${f(x - 7.62, 2)} ${f(py, 2)}) (xy ${f(x - 12.7, 2)} ${f(py, 2)})) (stroke (width 0) (type default)) (uuid "${nextUid()}"))\n`;
+      s += `\t(label "${net}" (at ${f(x - 12.7, 2)} ${f(py - 1.27, 2)} 0) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "${nextUid()}"))\n`;
     });
   }
   s += `\t(sheet_instances (path "/" (page "1")))\n\t(embedded_fonts no)\n)\n`;
   write('week1-pcb/benchrail_ina.kicad_sch', s);
+  return fab;
 }
 
 // ---------------------------------------------------------------------------
@@ -886,6 +963,18 @@ function gerber(layerName, w, h, items, tag) {
   const meta = GERBER_LAYER_META[layerName];
   if (!meta) throw new Error(`Unknown Gerber layer: ${layerName}`);
   const [fileFn, filePolarity] = meta;
+  const mm6 = n => Number(n).toFixed(6);
+  const dynamic = new Map();
+  const itemApertureKey = it => {
+    if (it.t === 'flash' && it.shape === 'rect') return `R:${mm6(it.w)}X${mm6(it.h)}`;
+    if (it.t === 'flash' && it.shape === 'circle') return `C:${mm6(it.d)}`;
+    if ((it.t === 'line' || it.t === 'text') && it.width) return `W:${mm6(it.width)}`;
+    return null;
+  };
+  for (const it of items) {
+    const key = itemApertureKey(it);
+    if (key && !dynamic.has(key)) dynamic.set(key, 15 + dynamic.size);
+  }
   const L = [];
   L.push(`G04 ${tag} RS-274X plot*`);
   L.push(`G04 Layer: ${layerName}*`);
@@ -901,18 +990,26 @@ function gerber(layerName, w, h, items, tag) {
   L.push('%ADD12R,1.600000X0.900000*%');
   L.push('%ADD13C,2.700000*%');
   L.push('%ADD14C,0.800000*%');
+  for (const [key, ap] of dynamic) {
+    const [kind, spec] = key.split(':');
+    if (kind === 'R') L.push(`%ADD${ap}R,${spec}*%`);
+    else L.push(`%ADD${ap}C,${spec}*%`);
+  }
   L.push('%LPD*%');
   const X = n => Math.round(n * 1e6);
   for (const it of items) {
+    const key = itemApertureKey(it);
     if (it.t === 'flash') {
-      L.push(`D${it.ap}*`);
+      const ap = it.ap || (key && dynamic.get(key));
+      if (!ap) throw new Error('Gerber flash item is missing an aperture');
+      L.push(`D${ap}*`);
       L.push(`X${X(it.x)}Y${X(h - it.y)}D03*`);
     } else if (it.t === 'line') {
-      L.push('D11*');
+      L.push(`D${key ? dynamic.get(key) : 11}*`);
       L.push(`X${X(it.x0)}Y${X(h - it.y0)}D02*`);
       L.push(`X${X(it.x1)}Y${X(h - it.y1)}D01*`);
     } else if (it.t === 'text') {
-      L.push('D10*');
+      L.push(`D${key ? dynamic.get(key) : 10}*`);
       L.push(`X${X(it.x)}Y${X(h - it.y)}D02*`);
       L.push(`X${X(it.x + it.len)}Y${X(h - it.y)}D01*`);
     }
@@ -938,7 +1035,7 @@ function excellon(w, h, holes) {
   return L.join('\n') + '\n';
 }
 
-function gerberSet(dir, w, h, pads, drills, tag) {
+function gerberSet(dir, w, h, pads, drills, tag, fab = null) {
   const layers = [
     ['F_Cu.gbr', 'F.Cu'], ['B_Cu.gbr', 'B.Cu'],
     ['F_SilkS.gbr', 'F.SilkS'], ['B_SilkS.gbr', 'B.SilkS'],
@@ -952,10 +1049,30 @@ function gerberSet(dir, w, h, pads, drills, tag) {
     { t: 'line', x0: w, y0: h, x1: 0, y1: h },
     { t: 'line', x0: 0, y0: h, x1: 0, y1: 0 }
   ];
+  const flashFromPad = p => {
+    const it = { t: 'flash', x: p.x, y: p.y, shape: p.shape };
+    if (p.shape === 'rect') {
+      it.w = p.w;
+      it.h = p.h;
+    } else it.d = p.d;
+    return it;
+  };
+  const copperItems = layer => {
+    if (!fab || (layer !== 'F.Cu' && layer !== 'B.Cu')) return null;
+    return [
+      ...fab.pads.filter(p => p.copper.includes(layer)).map(flashFromPad),
+      ...fab.vias.map(v => flashFromPad({ x: v.x, y: v.y, shape: 'circle', d: v.size })),
+      ...fab.tracks.filter(track => track.layer === layer).map(track => ({
+        t: 'line', x0: track.x0, y0: track.y0, x1: track.x1, y1: track.y1, width: track.width
+      }))
+    ];
+  };
   const archiveEntries = [];
   for (const [fn, layer] of layers) {
     let items;
-    if (layer === 'Edge.Cuts') items = edge;
+    const exactCopper = copperItems(layer);
+    if (exactCopper) items = exactCopper;
+    else if (layer === 'Edge.Cuts') items = edge;
     else if (layer.includes('SilkS')) items = [
       { t: 'text', x: w * 0.16, y: 3.4, len: w * 0.6 },
       { t: 'text', x: w * 0.16, y: h - 2.6, len: w * 0.55 },
@@ -992,20 +1109,6 @@ function bom(rows) {
   return head + body + '\n';
 }
 
-const BOM1 = [
-  ['U1,U2', 'INA219AIDCNR', 'SOT-23-8', 2, 'LCSC', 'C924766', 1.38, 'TI INA219, I2C current and voltage monitor'],
-  ['U3', 'AMS1117-3.3', 'SOT-223-3', 1, 'LCSC', 'C6186', 0.16, '3.3 V LDO, 1 A'],
-  ['J1', 'USB4105-GF-A', 'USB-C SMD', 1, 'DigiKey', '2073-USB4105-GF-A-ND', 0.62, 'GCT USB4105 16 pin USB 2.0 receptacle'],
-  ['R1,R2', '0R1 1% 1206', '1206', 2, 'LCSC', 'C178685', 0.09, '0.1 ohm 1% 0.25 W sense resistor'],
-  ['R3', '10K 1% 0603', '0603', 1, 'LCSC', 'C25804', 0.01, 'INA219 address select pulldown'],
-  ['R4,R5', '5K1 1% 0603', '0603', 2, 'DigiKey', '311-5.10KHRCT-ND', 0.02, 'USB-C CC1 and CC2 Rd pulldowns'],
-  ['R6,R7', '4K7 1% 0603', '0603', 2, 'LCSC', 'C23162', 0.01, 'I2C bus pullups to 3V3'],
-  ['C1,C4,C5', '100n 0603 X7R', '0603', 3, 'LCSC', 'C14663', 0.01, 'Decoupling'],
-  ['C2,C3,C6', '10u 0603 X5R', '0603', 3, 'LCSC', 'C19702', 0.03, 'Bulk decoupling'],
-  ['J2', '1x04 2.54mm header', 'THT', 1, 'LCSC', 'C124378', 0.11, 'I2C and rail sense breakout'],
-  ['H1-H4', 'M2.5 nylon screw set', 'Hardware', 4, 'DigiKey', '36-9552-ND', 0.12, 'M2.5 x 6 mm nylon screws and nuts'],
-  ['PCB', 'BenchRail-INA 2L 62x42mm', 'FR4', 1, 'JLCPCB', 'PCB-2L-62x42', 2.40, '2 layer 1.6 mm ENIG, 5 pcs split cost']
-];
 const BOM3 = [
   ['U1', 'RP2040-Zero', 'Module', 1, 'DigiKey', '1528-2560-ND', 4.95, 'RP2040 module, 23 castellated pads'],
   ['U2', 'MCP6002-I/SN', 'SOIC-8', 1, 'LCSC', 'C134062', 0.42, 'Dual rail-to-rail op amp buffer'],
@@ -1216,7 +1319,7 @@ function main() {
   write('week2-cad/geometry_stats.json', JSON.stringify({ params: PARAMS, parts: stats }, null, 2) + '\n');
 
   // KiCad boards and schematics.
-  week1(); week3(); week4();
+  const week1Fab = week1(); week3(); week4();
 
   // Gerber and drill sets: pad flashes and holes derived from the same
   // deterministic footprint positions used above.
@@ -1238,7 +1341,7 @@ function main() {
     return { pads, drills };
   };
   const g1 = mk(62, 42), g3 = mk(78, 56), g4 = mk(88, 54);
-  gerberSet('week1-pcb', 62, 42, g1.pads, g1.drills, 'benchrail_ina');
+  gerberSet('week1-pcb', 62, 42, g1.pads, week1Fab.drills, 'benchrail_ina', week1Fab);
   gerberSet('week3-music', 78, 56, g3.pads, g3.drills, 'pocketchime');
   gerberSet('week4-display', 88, 54, g4.pads, g4.drills, 'glyphmatrix');
 
