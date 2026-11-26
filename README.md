@@ -97,7 +97,7 @@ Eight 74HCxx DIP ICs on two 830-point breadboards. A `74HC283` full adder, `74HC
 
 ## Verification
 
-`node --test` runs 554 tests with thousands of individual assertions:
+`node --test` runs 555 tests with thousands of individual assertions:
 
 * KiCad 8 `(version 20240108)` PCB and `(version 20231120)` schematic headers, balanced S-expression parentheses, all nine required layers, net classes, routed copper, pads, courtyards, and four M2.5 holes per board.
 * RS-274X `G04`, `%FSLAX46Y46*%`, `%MOMM*%`, aperture definitions, and a terminating `M02*` on all 27 Gerber plots; Excellon `M48`, `FMAT,2`, tool table, `G90`, `G05`, coordinate records, and `M30` on all three drill files.

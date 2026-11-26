@@ -666,8 +666,11 @@
 
   function csvCell(v) {
     let s = v === null || v === undefined ? '' : String(v);
-    if (/^[\s=+\-@\x00-\x1f\x7f-\x9f\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufe00-\ufe0f]/.test(s)) s = "'" + s;
-    if (/[",\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+    const lead = (/^[\s\p{Cf}\p{Cc}]*/u.exec(s) || [''])[0];
+    const first = s.charAt(lead.length);
+    const plainNumber = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(s.slice(lead.length));
+    if (lead.length > 0 || (first !== '' && '=+-@'.indexOf(first) !== -1 && !(first === '-' && plainNumber))) s = "'" + s;
+    if (/[",\n\r]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
     return s;
   }
 
@@ -898,7 +901,8 @@
     });
     tryCheck('CSV: formula injection escaped', () => {
       const samples = ['=1+1', '+x', '-x', '@x', '\tx', '\rx', ' =1+1', '\u200b=1+1', '\u0000=1+1'];
-      const ok = samples.every(s => csvCell(s).charAt(0) === "'");
+      const content = s => s.startsWith('"') && s.endsWith('"') ? s.slice(1, -1) : s;
+      const ok = samples.every(s => content(csvCell(s)).charAt(0) === "'");
       return { pass: ok && csvCell('safe') === 'safe', detail: samples.length + ' hostile prefixes' };
     });
     tryCheck('STL tetrahedron parses watertight with volume', () => {

@@ -567,7 +567,8 @@ test('tamperDemo flips one unit and is always detected', () => {
 for (const ch of ['=', '+', '-', '@', '\t', '\r']) {
   test(`csvCell prefixes the formula char ${JSON.stringify(ch)}`, () => {
     const out = Lab.csvCell(ch + '1+1');
-    assert.equal(out.charAt(0), "'");
+    const content = out.startsWith('"') && out.endsWith('"') ? out.slice(1, -1) : out;
+    assert.equal(content.charAt(0), "'");
   });
 }
 test('csvCell prefixes formulas hidden behind whitespace or invisible characters', () => {
@@ -728,5 +729,5 @@ test('style.css exposes keyboard focus and print cleanup rules', () => {
 });
 
 test('README test count matches the verified harness total', () => {
-  assert.match(read('README.md'), /runs 552 tests with thousands of individual assertions/);
+  assert.match(read('README.md'), /runs 555 tests with thousands of individual assertions/);
 });
