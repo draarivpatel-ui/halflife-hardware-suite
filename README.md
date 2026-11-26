@@ -1,8 +1,10 @@
 # halflife-hardware-suite
 
-Five manufacturable hardware designs built for [Hack Club Half Life](https://halflife.hackclub.com/) and the parametric CAD practice of [Hack Club Atlantis](https://atlantis.hackclub.com/), plus a zero-dependency browser workbench that inspects all five. Everything is checked in as source, fabrication output, firmware, and repeatable tests. No build step, no package manager, no external assets.
+Five hardware design studies built for [Hack Club Half Life](https://halflife.hackclub.com/) and the parametric CAD practice of [Hack Club Atlantis](https://atlantis.hackclub.com/), plus a zero-dependency browser workbench that inspects all five. Everything is checked in as source, fabrication output, firmware, and repeatable tests. No build step, no package manager, no external assets.
 
 Live workbench: <https://aariv.me/halflife-hardware-suite/>
+
+> **PCB fabrication status: not fabrication-ready.** A static audit on 2026-11-25 found incomplete copper connectivity in the week 1, 3, and 4 PCB sources. It also confirmed that weeks 3 and 4 currently emit no board-derived copper tracks in their copper Gerbers because the generator falls back to synthetic pad grids when no exact board capture is passed. Do not upload any PCB Gerber zip until the boards are rerouted, the copper plots are regenerated from real board geometry, and both are independently revalidated.
 Repository: <https://github.com/draarivpatel-ui/halflife-hardware-suite>
 
 ## Why this exists
@@ -24,7 +26,7 @@ All four priced BOMs sit far below the `$100.00` per-project allowance and below
 ```bash
 git clone https://github.com/draarivpatel-ui/halflife-hardware-suite.git
 cd halflife-hardware-suite
-node --test test.js
+node --test
 ```
 
 Open `index.html` in any modern browser. It uses plain HTML, CSS, and JavaScript, so it also works from a local file; a static server gives the workbench live access to the checked-in KiCad, STL, and netlist sources. No npm install, no bundler, no CDN.
@@ -95,7 +97,7 @@ Eight 74HCxx DIP ICs on two 830-point breadboards. A `74HC283` full adder, `74HC
 
 ## Verification
 
-`node --test test.js` runs 552 tests with thousands of individual assertions:
+`node --test` runs 554 tests with thousands of individual assertions:
 
 * KiCad 8 `(version 20240108)` PCB and `(version 20231120)` schematic headers, balanced S-expression parentheses, all nine required layers, net classes, routed copper, pads, courtyards, and four M2.5 holes per board.
 * RS-274X `G04`, `%FSLAX46Y46*%`, `%MOMM*%`, aperture definitions, and a terminating `M02*` on all 27 Gerber plots; Excellon `M48`, `FMAT,2`, tool table, `G90`, `G05`, coordinate records, and `M30` on all three drill files.
@@ -106,7 +108,7 @@ Eight 74HCxx DIP ICs on two 830-point breadboards. A `74HC283` full adder, `74HC
 * All 512 ADD/SUB operand vectors with exact carry, zero, and overflow, plus all 1280 five-opcode vectors cross-checked between the browser model and `alu.js`.
 * Byte-level scan of every file for zero em dashes, zero en dashes, zero AI self-references, backtick-wrapped dollar amounts in Markdown, and no personal contact details.
 * The autoplay guard: exactly one `AudioContext` construction site, bound only to a change handler, with gain zero until the separate Play click.
-* Lab (`suite-lab.test.js`, required by `test.js`): FIPS 180-4 SHA-256 known-answer vectors plus a 0-to-160-byte boundary sweep against Node `crypto`, canonicalizer key-order, cycle, and depth-bound tests, hostile `#hlab=` codec rejection (`__proto__`, bad roots, bad base64url, clamp violations), R-2R generalized-solver parity with the suite solver across all 256 codes, tolerance-sweep invariants, INA219 sweep bounds, comparator BOM-vs-cap and metric verdicts cross-checked against the real CSVs, formula-injection CSV escaping, single-digest parity across all four export surfaces, one-unit tamper detection, a 160-vector ALU spot grid, the 25-check deterministic self-test battery, and DOM wiring assertions for the sixth tab.
+* Lab (`suite-lab.test.js`, discovered beside `test.js`): FIPS 180-4 SHA-256 known-answer vectors plus a 0-to-160-byte boundary sweep against Node `crypto`, canonicalizer key-order, cycle, and depth-bound tests, hostile `#hlab=` codec rejection (`__proto__`, bad roots, bad base64url, clamp violations), R-2R generalized-solver parity with the suite solver across all 256 codes, tolerance-sweep invariants, INA219 sweep bounds, comparator BOM-vs-cap and metric verdicts cross-checked against the real CSVs, formula-injection CSV escaping, single-digest parity across all four export surfaces, one-unit tamper detection, a 160-vector ALU spot grid, the 25-check deterministic self-test battery, and DOM wiring assertions for the sixth tab.
 
 ## Repository layout
 
@@ -127,7 +129,7 @@ week5-logic/  netlist.json  BREADBOARD_GUIDE.md  alu.js  bom.csv
 
 * All PCBs are 2 layer, 1.6 mm FR4, 0.035 mm copper, ENIG finish, green mask, with a 1.51 mm FR4 dielectric core.
 * Gerbers use 4.6 format, millimetres, Gerber X2 `%TF.FileFunction` and `%TF.FilePolarity` attributes, and 4.4 metric drill coordinates.
-* Upload `<board>-gerbers.zip` (containing all nine `.gbr` plots plus `<board>.drl`, with `Edge.Cuts` mapped to `Profile,NP`) directly to PCBWay, JLCPCB, or OSH Park.
+&
 * BOM prices are single-unit catalog prices captured for this build. They exclude shipping and customs, which Half Life does not cover.
 * Week 2 prints without supports. Allow a 0.2 mm bore clearance on the M2.5 hinge.
 * Week 5 uses a current-limited 5 V bench supply and expects under 20 mA idle draw. Tie every unused CMOS input to a defined rail.

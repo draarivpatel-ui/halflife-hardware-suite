@@ -859,8 +859,15 @@ test('week1 board: VBUS track reaches VIN pad without touching the +3V3 pad', ()
   assert.ok(v3.some(g => g.x0 === 12 && g.y0 === 30), '+3V3 must start at the VOUT pad');
 });
 
-// ---------------------------------------------------------------------------
-// 11. Suite Audit & Physics Lab: the lab test file registers its checks inside
-// this same process, so `node --test test.js` runs every suite at once.
-// ---------------------------------------------------------------------------
-require('./suite-lab.test.js');
+
+test('test discovery: suite lab tests are not nested inside test.js', () => {
+  const forbidden = "require('./suite-" + "lab.test.js')";
+  assert.ok(!read('test.js').includes(forbidden), 'bare node --test must not execute suite-lab.test.js twice');
+});
+
+test('fabrication status warning prevents accidental upload of incomplete PCB copper', () => {
+  const readme = read('README.md');
+  assert.match(readme, /PCB fabrication status: not fabrication-ready/);
+  assert.match(readme, /Do not upload any PCB Gerber zip/);
+  assert.match(readme, /weeks 3 and 4 currently emit no board-derived copper tracks/);
+});
