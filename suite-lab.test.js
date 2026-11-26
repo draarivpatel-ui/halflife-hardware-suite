@@ -729,5 +729,5 @@ test('style.css exposes keyboard focus and print cleanup rules', () => {
 });
 
 test('README test count matches the verified harness total', () => {
-  assert.match(read('README.md'), /runs 555 tests with thousands of individual assertions/);
+  assert.match(read('README.md'), /runs 556 tests with thousands of individual assertions/);
 });

@@ -250,3 +250,22 @@ svg .hit:focus > rect { stroke: var(--cyan); stroke-width: 1.4; }
   canvas, svg { max-width: 100%; }
   a { color: #111; }
 }
+
+@media print {
+  @page { margin: 12mm; }
+  .lab-scroll,
+  .lab-selftest {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .lab-table { min-width: 0 !important; }
+  button,
+  input,
+  select,
+  textarea {
+    display: none !important;
+  }
+
+  table { width: 100% !important; font-size: 8.5pt; }
+  th, td { overflow-wrap: anywhere; padding: 3px 5px !important; }
+}
