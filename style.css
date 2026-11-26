@@ -32,6 +32,10 @@ body {
   background-image: repeating-linear-gradient(0deg, transparent 0 3px, rgba(255,255,255,.011) 3px 4px);
 }
 a { color: var(--amber2); text-decoration: none; }
+a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
 a:hover { text-decoration: underline; }
 code { font-family: var(--mono); font-size: .88em; color: var(--cyan); background: #0c1215; padding: 1px 5px; border-radius: 3px; }
 
@@ -236,4 +240,13 @@ svg .hit:focus > rect { stroke: var(--cyan); stroke-width: 1.4; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   * { transition: none !important; }
+}
+
+@media print {
+  body { background: #fff; color: #111; }
+  .grain, .tabs, .btn-row, .head-meta { display: none !important; }
+  .site-head, .workbench, .panel, .card, .card-bar { background: #fff; color: #111; border-color: #bbb; box-shadow: none; }
+  .split { display: block; }
+  canvas, svg { max-width: 100%; }
+  a { color: #111; }
 }

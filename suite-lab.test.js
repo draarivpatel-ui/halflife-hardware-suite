@@ -570,6 +570,10 @@ for (const ch of ['=', '+', '-', '@', '\t', '\r']) {
     assert.equal(out.charAt(0), "'");
   });
 }
+test('csvCell prefixes formulas hidden behind whitespace or invisible characters', () => {
+  const hostile = [' =1+1', '\u0000=1+1', '\u000b+2+3', '\u200b@cmd', '\u00ad-4', '\u202e=cmd'];
+  for (const input of hostile) assert.equal(Lab.csvCell(input).charAt(0), "'", JSON.stringify(input));
+});
 test('csvCell leaves ordinary text untouched', () => {
   assert.equal(Lab.csvCell('BenchRail'), 'BenchRail');
   assert.equal(Lab.csvCell(6.9), '6.9');
@@ -713,4 +717,16 @@ test('style.css carries the lab mobile layout guards', () => {
   assert.match(css, /repeat\(6, minmax\(120px, 1fr\)\)/);
   assert.match(css, /\.lab-scroll \{ overflow-x: auto/);
   assert.match(css, /minmax\(0, 1fr\)/);
+});
+
+test('style.css exposes keyboard focus and print cleanup rules', () => {
+  const css = read('style.css');
+  assert.match(css, /a:focus-visible, button:focus-visible, input:focus-visible, \[tabindex\]:focus-visible/);
+  assert.match(css, /outline: 2px solid var\(--cyan\)/);
+  assert.match(css, /@media print/);
+  assert.match(css, /\.grain, \.tabs, \.btn-row, \.head-meta/);
+});
+
+test('README test count matches the verified harness total', () => {
+  assert.match(read('README.md'), /runs 552 tests with thousands of individual assertions/);
 });

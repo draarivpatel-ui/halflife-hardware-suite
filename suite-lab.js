@@ -666,7 +666,7 @@
 
   function csvCell(v) {
     let s = v === null || v === undefined ? '' : String(v);
-    if (s.length && '=+-@\t\r'.indexOf(s.charAt(0)) >= 0) s = "'" + s;
+    if (/^[\s=+\-@\x00-\x1f\x7f-\x9f\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufe00-\ufe0f]/.test(s)) s = "'" + s;
     if (/[",\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
     return s;
   }
@@ -897,9 +897,9 @@
       return { pass: bad === 0, detail: bad + ' of ' + hostile.length + ' slipped through' };
     });
     tryCheck('CSV: formula injection escaped', () => {
-      const samples = ['=1+1', '+x', '-x', '@x', '\tx', '\rx'];
+      const samples = ['=1+1', '+x', '-x', '@x', '\tx', '\rx', ' =1+1', '\u200b=1+1', '\u0000=1+1'];
       const ok = samples.every(s => csvCell(s).charAt(0) === "'");
-      return { pass: ok && csvCell('safe') === 'safe', detail: '6 hostile prefixes' };
+      return { pass: ok && csvCell('safe') === 'safe', detail: samples.length + ' hostile prefixes' };
     });
     tryCheck('STL tetrahedron parses watertight with volume', () => {
       const st = S.STL.manifoldStats(S.STL.parseSTL(TETRA_STL));
